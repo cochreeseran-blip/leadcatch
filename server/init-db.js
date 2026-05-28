@@ -1,0 +1,88 @@
+import pool from './db.js';
+import bcrypt from 'bcrypt';
+
+export async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      website_url TEXT,
+      phone_number TEXT,
+      logo_url TEXT,
+      brand_color TEXT DEFAULT '#ea580c',
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('superadmin','manager','rep')),
+      knocktrakr_enabled BOOLEAN DEFAULT true,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS knocks (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER REFERENCES companies(id),
+      rep_id INTEGER REFERENCES users(id),
+      address TEXT,
+      street_number TEXT,
+      street_name TEXT,
+      city TEXT,
+      lat NUMERIC,
+      lng NUMERIC,
+      outcome TEXT DEFAULT 'no_answer',
+      notes TEXT,
+      is_lead BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS knock_leads (
+      id SERIAL PRIMARY KEY,
+      knock_id INTEGER REFERENCES knocks(id),
+      company_id INTEGER REFERENCES companies(id),
+      rep_id INTEGER REFERENCES users(id),
+      homeowner_name TEXT,
+      phone TEXT,
+      address TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'new',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rep_shifts (
+      id SERIAL PRIMARY KEY,
+      rep_id INTEGER REFERENCES users(id),
+      company_id INTEGER REFERENCES companies(id),
+      clock_in TIMESTAMPTZ,
+      clock_out TIMESTAMPTZ,
+      total_knocks INTEGER DEFAULT 0,
+      total_leads INTEGER DEFAULT 0
+    )
+  `);
+
+  const { rows } = await pool.query('SELECT COUNT(*) FROM users');
+  if (parseInt(rows[0].count) === 0) {
+    const hash = await bcrypt.hash('admin123', 10);
+    await pool.query(
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)`,
+      ['admin', hash, 'superadmin']
+    );
+  }
+
+  console.log('Database initialized successfully');
+}
