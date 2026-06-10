@@ -15,10 +15,14 @@ export default function RepTool() {
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
+  const [accuracy, setAccuracy] = useState(null);
   const [stats, setStats] = useState({ knocks_today: 0, leads_today: 0 });
   const [flash, setFlash] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const panelRef = useRef(null);
@@ -36,20 +40,27 @@ export default function RepTool() {
 
   async function detectLocation() {
     setLocating(true);
+    setShowSearch(false);
     navigator.geolocation.getCurrentPosition(
       async pos => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy: acc } = pos.coords;
         setLat(latitude);
         setLng(longitude);
+        setAccuracy(Math.round(acc));
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`,
+            { headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'KnockTrakr/1.0' } }
           );
           const data = await res.json();
           const addr = data.display_name || '';
           setAddress(addr);
+          setSearchQuery(addr);
+          setShowSearch(true);
         } catch {
           setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          setSearchQuery(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          setShowSearch(true);
         }
         setLocating(false);
       },
@@ -57,8 +68,34 @@ export default function RepTool() {
         setLocating(false);
         alert('Could not get location. Please enable location access.');
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
+  }
+
+  async function searchAddress() {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'KnockTrakr/1.0' } }
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const result = data[0];
+        setLat(parseFloat(result.lat));
+        setLng(parseFloat(result.lon));
+        setAddress(result.display_name);
+        setAccuracy(null);
+        setShowFlash('Address confirmed!', 'green');
+      } else {
+        alert('Address not found. Please try a different search.');
+      }
+    } catch (err) {
+      alert('Failed to search address. Please try again.');
+    } finally {
+      setSearching(false);
+    }
   }
 
   function adjustStreetNumber(delta) {
@@ -175,6 +212,40 @@ export default function RepTool() {
         >
           {locating ? 'Detecting...' : '📍 Detect My Location'}
         </button>
+
+        {accuracy !== null && (
+          <div className={`text-sm px-3 py-2 rounded-lg ${accuracy > 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+            {accuracy > 50 ? (
+              <span>⚠️ Low GPS accuracy (±{accuracy} meters) — consider searching manually</span>
+            ) : (
+              <span>📍 Location detected (±{accuracy} meters)</span>
+            )}
+          </div>
+        )}
+
+        {showSearch && (
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2">
+            <label className="text-sm text-stone-600 font-medium">Verify or correct address:</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search address..."
+                className="flex-1 border border-stone-300 rounded-xl px-3 py-2 text-stone-800 outline-none focus:border-orange-500"
+                style={{ fontSize: '16px' }}
+              />
+              <button
+                onClick={searchAddress}
+                disabled={searching}
+                className="px-4 py-2 rounded-xl bg-orange-600 text-white font-medium text-sm active:bg-orange-700 disabled:opacity-60"
+              >
+                {searching ? '...' : 'Search'}
+              </button>
+            </div>
+            <p className="text-xs text-stone-500">Edit the address above and click Search to confirm exact location</p>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <button
