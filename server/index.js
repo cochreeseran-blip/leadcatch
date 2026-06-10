@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -43,7 +43,7 @@ async function start() {
     console.log('DB not available, running in frontend-only mode:', err.message);
   }
   app.listen(PORT, () => {
-    console.log(`LeadCatch API running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
