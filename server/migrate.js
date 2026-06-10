@@ -10,6 +10,9 @@ const pool = new Pool({
 
 async function migrate() {
   try {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
     console.log('Connecting to database...');
     await pool.query('SELECT 1');
     console.log('Connected. Creating tables...');
@@ -121,7 +124,8 @@ async function migrate() {
     console.log('\n✅ Migration complete!');
     process.exit(0);
   } catch (err) {
-    console.error('\n❌ Migration failed:', err.message);
+    console.error('\n❌ Migration failed:', err.message || err);
+    console.error(err);
     process.exit(1);
   }
 }
