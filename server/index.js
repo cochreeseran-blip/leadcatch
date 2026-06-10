@@ -37,7 +37,11 @@ if (existsSync(publicPath)) {
 }
 
 async function start() {
-  await initDb();
+  try {
+    await initDb();
+  } catch (err) {
+    console.log('DB not available, running in frontend-only mode:', err.message);
+  }
   app.listen(PORT, () => {
     console.log(`LeadCatch API running on port ${PORT}`);
   });

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "KnockTrakr by LeadCatch Solutions",
   "scripts": {
-    "start": "npm start --prefix server",
-    "build": "npm install && npm install --prefix client && npm run build --prefix client && cp -r client/dist server/public && npm install --prefix server"
-  }
+  "build": "cd client && npm install && npm run build && cp -r dist ../server/public",
+  "start": "node server/index.js"
+}
 }

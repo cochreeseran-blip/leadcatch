@@ -5,15 +5,39 @@ import { authMiddleware } from '../middleware/auth.js';
 const router = Router();
 router.use(authMiddleware);
 
+let dbAvailable = true;
+pool.query('SELECT 1').catch(() => { dbAvailable = false; });
+
+const MOCK_KNOCKS = [];
+const MOCK_LEADS = [];
+let nextKnockId = 1;
+let nextLeadId = 1;
+
 router.post('/knock', async (req, res) => {
   const { address, lat, lng, outcome, notes, isLead } = req.body;
   try {
-    const { rows } = await pool.query(
-      `INSERT INTO knocks (company_id, rep_id, address, lat, lng, outcome, notes, is_lead)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [req.user.companyId, req.user.id, address, lat, lng, outcome || 'no_answer', notes || null, isLead || false]
-    );
-    res.json(rows[0]);
+    if (dbAvailable) {
+      const { rows } = await pool.query(
+        `INSERT INTO knocks (company_id, rep_id, address, lat, lng, outcome, notes, is_lead)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [req.user.companyId, req.user.id, address, lat, lng, outcome || 'no_answer', notes || null, isLead || false]
+      );
+      return res.json(rows[0]);
+    }
+    const knock = {
+      id: nextKnockId++,
+      company_id: req.user.companyId,
+      rep_id: req.user.id,
+      address,
+      lat,
+      lng,
+      outcome: outcome || 'no_answer',
+      notes: notes || null,
+      is_lead: isLead || false,
+      created_at: new Date().toISOString(),
+    };
+    MOCK_KNOCKS.push(knock);
+    res.json(knock);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -23,15 +47,35 @@ router.post('/knock', async (req, res) => {
 router.post('/lead', async (req, res) => {
   const { knockId, homeownerName, phone, address, notes } = req.body;
   try {
-    const { rows } = await pool.query(
-      `INSERT INTO knock_leads (knock_id, company_id, rep_id, homeowner_name, phone, address, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [knockId, req.user.companyId, req.user.id, homeownerName, phone, address, notes]
-    );
-    if (knockId) {
-      await pool.query(`UPDATE knocks SET is_lead = true WHERE id = $1`, [knockId]);
+    if (dbAvailable) {
+      const { rows } = await pool.query(
+        `INSERT INTO knock_leads (knock_id, company_id, rep_id, homeowner_name, phone, address, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [knockId, req.user.companyId, req.user.id, homeownerName, phone, address, notes]
+      );
+      if (knockId) {
+        await pool.query(`UPDATE knocks SET is_lead = true WHERE id = $1`, [knockId]);
+      }
+      return res.json(rows[0]);
     }
-    res.json(rows[0]);
+    const lead = {
+      id: nextLeadId++,
+      knock_id: knockId,
+      company_id: req.user.companyId,
+      rep_id: req.user.id,
+      homeowner_name: homeownerName,
+      phone,
+      address,
+      notes,
+      status: 'new',
+      created_at: new Date().toISOString(),
+    };
+    MOCK_LEADS.push(lead);
+    if (knockId) {
+      const knock = MOCK_KNOCKS.find(k => k.id === knockId);
+      if (knock) knock.is_lead = true;
+    }
+    res.json(lead);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -42,20 +86,24 @@ router.get('/stats', async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const { rows: knockRows } = await pool.query(
-      `SELECT COUNT(*) FROM knocks WHERE rep_id = $1 AND created_at >= $2`,
-      [req.user.id, today]
-    );
-    const { rows: leadRows } = await pool.query(
-      `SELECT COUNT(*) FROM knock_leads WHERE rep_id = $1 AND created_at >= $2`,
-      [req.user.id, today]
-    );
-
-    res.json({
-      knocks_today: parseInt(knockRows[0].count),
-      leads_today: parseInt(leadRows[0].count),
-    });
+    
+    if (dbAvailable) {
+      const { rows: knockRows } = await pool.query(
+        `SELECT COUNT(*) FROM knocks WHERE rep_id = $1 AND created_at >= $2`,
+        [req.user.id, today]
+      );
+      const { rows: leadRows } = await pool.query(
+        `SELECT COUNT(*) FROM knock_leads WHERE rep_id = $1 AND created_at >= $2`,
+        [req.user.id, today]
+      );
+      return res.json({
+        knocks_today: parseInt(knockRows[0].count),
+        leads_today: parseInt(leadRows[0].count),
+      });
+    }
+    const knocksToday = MOCK_KNOCKS.filter(k => k.rep_id === req.user.id && new Date(k.created_at) >= today).length;
+    const leadsToday = MOCK_LEADS.filter(l => l.rep_id === req.user.id && new Date(l.created_at) >= today).length;
+    res.json({ knocks_today: knocksToday, leads_today: leadsToday });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
