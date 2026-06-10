@@ -1,6 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default marker icon in React
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+// Custom icons for knock pins
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const greyIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 const OUTCOMES = [
   { value: 'not_interested', label: 'Not Interested' },
@@ -9,6 +43,16 @@ const OUTCOMES = [
   { value: 'inspection_set', label: 'Inspection Set' },
   { value: 'other', label: 'Other' },
 ];
+
+function MapCenter({ position }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.setView(position, 18);
+    }
+  }, [position, map]);
+  return null;
+}
 
 export default function RepTool() {
   const { user, logout } = useAuth();
@@ -25,10 +69,20 @@ export default function RepTool() {
   const [showSearch, setShowSearch] = useState(false);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [knocks, setKnocks] = useState([]);
+  const [userPos, setUserPos] = useState(null);
   const panelRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   useEffect(() => {
     fetchStats();
+    fetchTodayKnocks();
+    startLocationWatch();
+    return () => {
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
   }, []);
 
   async function fetchStats() {
@@ -36,6 +90,26 @@ export default function RepTool() {
       const data = await api('/api/knocktrakr/stats');
       setStats(data);
     } catch {}
+  }
+
+  async function fetchTodayKnocks() {
+    try {
+      const data = await api('/api/knocktrakr/knocks');
+      setKnocks(data || []);
+    } catch {}
+  }
+
+  function startLocationWatch() {
+    if (!navigator.geolocation) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        setUserPos({ lat: latitude, lng: longitude });
+        setAccuracy(Math.round(acc));
+      },
+      (err) => console.log('GPS watch error:', err),
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
   }
 
   async function detectLocation() {
@@ -46,16 +120,18 @@ export default function RepTool() {
         const { latitude, longitude, accuracy: acc } = pos.coords;
         setLat(latitude);
         setLng(longitude);
+        setUserPos({ lat: latitude, lng: longitude });
         setAccuracy(Math.round(acc));
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`,
-            { headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'KnockTrakr/1.0' } }
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18&addressdetails=1`,
+            { headers: { 'User-Agent': 'KnockTrakr/1.0 (useleadcatch.com)' } }
           );
           const data = await res.json();
-          const addr = data.display_name || '';
-          setAddress(addr);
-          setSearchQuery(addr);
+          const addr = data.address;
+          const full = `${addr.house_number || ''} ${addr.road || ''}, ${addr.city || addr.town || ''}, ${addr.state || ''}`.trim();
+          setAddress(full || data.display_name || '');
+          setSearchQuery(full || data.display_name || '');
           setShowSearch(true);
         } catch {
           setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
@@ -126,6 +202,7 @@ export default function RepTool() {
       setLat(null);
       setLng(null);
       await fetchStats();
+      await fetchTodayKnocks();
     } catch (err) {
       alert(err.message);
     }
@@ -170,6 +247,7 @@ export default function RepTool() {
       setLat(null);
       setLng(null);
       await fetchStats();
+      await fetchTodayKnocks();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -203,12 +281,56 @@ export default function RepTool() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col px-4 pt-6 pb-32 gap-4">
+      <div className="flex-1 flex flex-col px-4 pt-4 pb-32 gap-3 overflow-y-auto">
+        {/* Map Container */}
+        <div className="w-full rounded-xl overflow-hidden border border-stone-300" style={{ height: '45vh', minHeight: '300px' }}>
+          <MapContainer
+            center={userPos || { lat: 39.8283, lng: -98.5795 }}
+            zoom={userPos ? 18 : 4}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {userPos && (
+              <>
+                <Circle
+                  center={[userPos.lat, userPos.lng]}
+                  radius={accuracy || 10}
+                  pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }}
+                />
+                <Marker position={[userPos.lat, userPos.lng]}>
+                  <Popup>You are here</Popup>
+                </Marker>
+                <MapCenter position={[userPos.lat, userPos.lng]} />
+              </>
+            )}
+            {knocks.map((knock, idx) => (
+              knock.lat && knock.lng && (
+                <Marker
+                  key={idx}
+                  position={[knock.lat, knock.lng]}
+                  icon={knock.outcome === 'no_answer' ? greyIcon : greenIcon}
+                >
+                  <Popup>
+                    <div className="text-sm">
+                      <p className="font-medium">{knock.address}</p>
+                      <p className="text-stone-500">{knock.outcome === 'no_answer' ? 'No Answer' : 'Answered'}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )
+            ))}
+          </MapContainer>
+        </div>
+
         <button
           onClick={detectLocation}
           disabled={locating}
-          className="w-full py-4 rounded-xl text-white font-semibold text-base transition active:scale-95 disabled:opacity-60"
-          style={{ backgroundColor: '#1c1917', minHeight: '64px', fontSize: '16px' }}
+          className="w-full py-3 rounded-xl text-white font-semibold text-base transition active:scale-95 disabled:opacity-60"
+          style={{ backgroundColor: '#1c1917', minHeight: '56px', fontSize: '16px' }}
         >
           {locating ? 'Detecting...' : '📍 Detect My Location'}
         </button>
@@ -250,8 +372,8 @@ export default function RepTool() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => adjustStreetNumber(-1)}
-            className="w-14 h-14 rounded-xl bg-stone-200 text-stone-700 text-2xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
-            style={{ minHeight: '56px' }}
+            className="w-12 h-12 rounded-xl bg-stone-200 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
+            style={{ minHeight: '48px' }}
           >
             −
           </button>
@@ -260,32 +382,32 @@ export default function RepTool() {
             value={address}
             onChange={e => setAddress(e.target.value)}
             placeholder="Address (or detect location above)"
-            className="flex-1 border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500 transition"
-            style={{ fontSize: '16px', minHeight: '56px' }}
+            className="flex-1 border border-stone-300 rounded-xl px-4 py-2 text-stone-800 outline-none focus:border-orange-500 transition"
+            style={{ fontSize: '16px', minHeight: '48px' }}
           />
           <button
             onClick={() => adjustStreetNumber(1)}
-            className="w-14 h-14 rounded-xl bg-stone-200 text-stone-700 text-2xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
-            style={{ minHeight: '56px' }}
+            className="w-12 h-12 rounded-xl bg-stone-200 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
+            style={{ minHeight: '48px' }}
           >
             +
           </button>
         </div>
 
-        <div className="flex gap-3 mt-2">
+        <div className="flex gap-3 mt-1">
           <button
             onClick={handleNoAnswer}
             disabled={!address}
-            className="flex-1 py-5 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
-            style={{ backgroundColor: '#9ca3af', minHeight: '72px', fontSize: '18px' }}
+            className="flex-1 py-4 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: '#9ca3af', minHeight: '64px', fontSize: '18px' }}
           >
             NO ANSWER
           </button>
           <button
             onClick={handleAnswered}
             disabled={!address}
-            className="flex-1 py-5 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
-            style={{ backgroundColor: '#ea580c', minHeight: '72px', fontSize: '18px' }}
+            className="flex-1 py-4 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: '#ea580c', minHeight: '64px', fontSize: '18px' }}
           >
             ANSWERED
           </button>
