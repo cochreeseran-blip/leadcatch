@@ -99,6 +99,7 @@ export async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token_expires_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`);
   await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_sync_status TEXT DEFAULT 'pending'`);
   await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_error TEXT`);
   await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_contact_id TEXT`);
