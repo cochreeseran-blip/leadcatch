@@ -113,10 +113,11 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    // Delete in FK dependency order — leads → knocks → users → company
+    // Delete in FK dependency order — leads → knocks → shifts → users → company
     // (neighborhoods cascade from company; neighborhood_assignments cascade from both)
     await pool.query(`DELETE FROM knock_leads WHERE company_id = $1`, [req.params.id]);
     await pool.query(`DELETE FROM knocks WHERE company_id = $1`, [req.params.id]);
+    await pool.query(`DELETE FROM rep_shifts WHERE company_id = $1`, [req.params.id]);
     await pool.query(`DELETE FROM users WHERE company_id = $1`, [req.params.id]);
     await pool.query(`DELETE FROM companies WHERE id = $1`, [req.params.id]);
     res.json({ deleted: true });
