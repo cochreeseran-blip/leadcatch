@@ -5,6 +5,7 @@ import net from 'net';
 import { promisify } from 'util';
 import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
+import { testConnection } from '../services/acculynx.js';
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -54,10 +55,17 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminOnly);
 
+// Never return acculynx_api_key — expose only a boolean that a key is configured
+const COMPANY_SAFE_COLS = `
+  c.id, c.name, c.website_url, c.phone_number, c.logo_url, c.brand_color,
+  c.is_active, c.created_at, c.acculynx_push_enabled,
+  (c.acculynx_api_key IS NOT NULL AND c.acculynx_api_key != '') AS acculynx_key_configured
+`;
+
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT c.*, COUNT(u.id) AS rep_count
+      SELECT ${COMPANY_SAFE_COLS}, COUNT(u.id) AS rep_count
       FROM companies c
       LEFT JOIN users u ON u.company_id = c.id
       GROUP BY c.id
@@ -77,7 +85,9 @@ router.post('/', async (req, res) => {
       `INSERT INTO companies (name, website_url, phone_number) VALUES ($1, $2, $3) RETURNING *`,
       [name, websiteUrl, phoneNumber]
     );
-    res.json(rows[0]);
+    const c = rows[0];
+    // Return safe shape (no acculynx_api_key)
+    res.json({ ...c, acculynx_api_key: undefined, acculynx_key_configured: false });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -88,7 +98,10 @@ router.put('/:id', async (req, res) => {
   const { name, websiteUrl, phoneNumber } = req.body;
   try {
     const { rows } = await pool.query(
-      `UPDATE companies SET name=$1, website_url=$2, phone_number=$3 WHERE id=$4 RETURNING *`,
+      `UPDATE companies SET name=$1, website_url=$2, phone_number=$3 WHERE id=$4
+       RETURNING id, name, website_url, phone_number, logo_url, brand_color, is_active, created_at,
+                 acculynx_push_enabled,
+                 (acculynx_api_key IS NOT NULL AND acculynx_api_key != '') AS acculynx_key_configured`,
       [name, websiteUrl, phoneNumber, req.params.id]
     );
     res.json(rows[0]);
@@ -160,6 +173,67 @@ router.get('/:id/branding', async (req, res) => {
     );
 
     res.json({ logoUrl, themeColor, displayName, domain });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── AccuLynx CRM integration ─────────────────────────────────────────────────
+
+// Save (or clear) an AccuLynx API key for a company
+router.put('/:id/acculynx-key', async (req, res) => {
+  const { apiKey } = req.body;
+  try {
+    const keyValue = apiKey && apiKey.trim() ? apiKey.trim() : null;
+    await pool.query(
+      `UPDATE companies SET acculynx_api_key = $1 WHERE id = $2`,
+      [keyValue, req.params.id]
+    );
+    // If key was cleared, also disable push
+    if (!keyValue) {
+      await pool.query(`UPDATE companies SET acculynx_push_enabled = false WHERE id = $1`, [req.params.id]);
+    }
+    res.json({ configured: !!keyValue });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Test the AccuLynx connection using the stored key
+router.post('/:id/acculynx-test', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT acculynx_api_key FROM companies WHERE id = $1`, [req.params.id]);
+    const company = rows[0];
+    if (!company) return res.status(404).json({ error: 'Not found' });
+    if (!company.acculynx_api_key) return res.status(400).json({ error: 'No API key configured' });
+
+    await testConnection(company.acculynx_api_key);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('AccuLynx test failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Toggle whether leads are pushed to AccuLynx
+router.put('/:id/acculynx-push', async (req, res) => {
+  const { enabled } = req.body;
+  try {
+    const { rows: compRows } = await pool.query(
+      `SELECT acculynx_api_key FROM companies WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!compRows[0]) return res.status(404).json({ error: 'Not found' });
+    if (enabled && !compRows[0].acculynx_api_key) {
+      return res.status(400).json({ error: 'Cannot enable push without an API key' });
+    }
+    await pool.query(
+      `UPDATE companies SET acculynx_push_enabled = $1 WHERE id = $2`,
+      [!!enabled, req.params.id]
+    );
+    res.json({ acculynx_push_enabled: !!enabled });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

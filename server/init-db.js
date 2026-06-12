@@ -93,6 +93,15 @@ export async function initDb() {
     )
   `);
 
+  // Add new columns to existing tables without dropping data
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS acculynx_api_key TEXT`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS acculynx_push_enabled BOOLEAN DEFAULT false`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`);
+  await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_sync_status TEXT DEFAULT 'pending'`);
+  await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_error TEXT`);
+  await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_contact_id TEXT`);
+  await pool.query(`ALTER TABLE knock_leads ADD COLUMN IF NOT EXISTS acculynx_job_id TEXT`);
+
   const { rows } = await pool.query('SELECT COUNT(*) FROM users');
   if (parseInt(rows[0].count) === 0) {
     const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);

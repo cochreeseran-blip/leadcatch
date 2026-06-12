@@ -14,13 +14,20 @@ export default function AdminPanel() {
   const [showAddRep, setShowAddRep] = useState(false);
   const [showAddManager, setShowAddManager] = useState(false);
   const [newRep, setNewRep] = useState({ firstName: '', lastName: '' });
-  const [newManager, setNewManager] = useState({ firstName: '', lastName: '', username: '', password: '' });
+  const [newManager, setNewManager] = useState({ firstName: '', lastName: '', username: '', password: '', email: '' });
   const [createdRepCreds, setCreatedRepCreds] = useState(null);
   const [createdManagerCreds, setCreatedManagerCreds] = useState(null);
   const [brandingLoading, setBrandingLoading] = useState(false);
   const [brandingMsg, setBrandingMsg] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // CRM integration state
+  const [crmApiKey, setCrmApiKey] = useState('');
+  const [crmSaving, setCrmSaving] = useState(false);
+  const [crmMsg, setCrmMsg] = useState(null); // { type: 'success'|'error', text: string }
+  const [crmTesting, setCrmTesting] = useState(false);
+  const [crmToggling, setCrmToggling] = useState(false);
 
   useEffect(() => {
     fetchCompanies();
@@ -44,6 +51,8 @@ export default function AdminPanel() {
   function openCompany(company) {
     setSelectedCompany(company);
     setBrandingMsg('');
+    setCrmMsg(null);
+    setCrmApiKey('');
     const reps = users.filter(u => u.company_id === company.id && u.role === 'rep');
     const managers = users.filter(u => u.company_id === company.id && u.role === 'manager');
     setCompanyReps(reps);
@@ -53,48 +62,12 @@ export default function AdminPanel() {
     setDeleteConfirm('');
   }
 
-  function refreshCompanyUsers() {
-    fetchUsers().then(() => {
-      if (selectedCompany) {
-        const reps = users.filter(u => u.company_id === selectedCompany.id && u.role === 'rep');
-        const managers = users.filter(u => u.company_id === selectedCompany.id && u.role === 'manager');
-        setCompanyReps(reps);
-        setCompanyManagers(managers);
-      }
-    });
-  }
-
-  async function addCompany() {
-    if (!newCompany.name) return;
-    setSaving(true);
-    try {
-      await api('/api/companies', {
-        method: 'POST',
-        body: JSON.stringify(newCompany),
-      });
-      setNewCompany({ name: '', websiteUrl: '', phoneNumber: '' });
-      setShowAddCompany(false);
-      fetchCompanies();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteCompany(company) {
-    if (deleteConfirm !== company.name) {
-      alert('Type the company name exactly to confirm deletion.');
-      return;
-    }
-    try {
-      await api(`/api/companies/${company.id}`, { method: 'DELETE' });
-      setSelectedCompany(null);
-      fetchCompanies();
-      fetchUsers();
-    } catch (err) {
-      alert(err.message);
-    }
+  async function fetchCompanyAndSync(companyId) {
+    const updated = await api('/api/companies');
+    setCompanies(updated);
+    const company = updated.find(c => c.id === companyId);
+    if (company) setSelectedCompany(company);
+    return company;
   }
 
   async function pullBranding() {
@@ -103,10 +76,7 @@ export default function AdminPanel() {
     try {
       const data = await api(`/api/companies/${selectedCompany.id}/branding`);
       setBrandingMsg(`Branding updated — logo and colors pulled from ${data.domain}`);
-      const updated = await api('/api/companies');
-      setCompanies(updated);
-      const company = updated.find(c => c.id === selectedCompany.id);
-      if (company) setSelectedCompany(company);
+      await fetchCompanyAndSync(selectedCompany.id);
     } catch (err) {
       setBrandingMsg('Failed: ' + err.message);
     } finally {
@@ -127,12 +97,9 @@ export default function AdminPanel() {
       await api('/api/users', {
         method: 'POST',
         body: JSON.stringify({
-          username,
-          password,
-          role: 'rep',
+          username, password, role: 'rep',
           companyId: selectedCompany.id,
-          firstName: newRep.firstName,
-          lastName: newRep.lastName,
+          firstName: newRep.firstName, lastName: newRep.lastName,
           knocktrakrEnabled: true,
         }),
       });
@@ -164,11 +131,12 @@ export default function AdminPanel() {
           companyId: selectedCompany.id,
           firstName: newManager.firstName,
           lastName: newManager.lastName,
+          email: newManager.email || null,
           knocktrakrEnabled: true,
         }),
       });
       setCreatedManagerCreds({ username: newManager.username, password: newManager.password });
-      setNewManager({ firstName: '', lastName: '', username: '', password: '' });
+      setNewManager({ firstName: '', lastName: '', username: '', password: '', email: '' });
       setShowAddManager(false);
       const updated = await api('/api/users');
       setUsers(updated);
@@ -195,6 +163,70 @@ export default function AdminPanel() {
     }
   }
 
+  async function deleteCompany(company) {
+    if (deleteConfirm !== company.name) {
+      alert('Type the company name exactly to confirm deletion.');
+      return;
+    }
+    try {
+      await api(`/api/companies/${company.id}`, { method: 'DELETE' });
+      setSelectedCompany(null);
+      fetchCompanies();
+      fetchUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // ── CRM actions ──
+
+  async function saveCrmKey() {
+    setCrmSaving(true);
+    setCrmMsg(null);
+    try {
+      await api(`/api/companies/${selectedCompany.id}/acculynx-key`, {
+        method: 'PUT',
+        body: JSON.stringify({ apiKey: crmApiKey }),
+      });
+      setCrmApiKey('');
+      setCrmMsg({ type: 'success', text: crmApiKey.trim() ? 'API key saved.' : 'API key cleared.' });
+      await fetchCompanyAndSync(selectedCompany.id);
+    } catch (err) {
+      setCrmMsg({ type: 'error', text: err.message });
+    } finally {
+      setCrmSaving(false);
+    }
+  }
+
+  async function testCrmConnection() {
+    setCrmTesting(true);
+    setCrmMsg(null);
+    try {
+      await api(`/api/companies/${selectedCompany.id}/acculynx-test`, { method: 'POST' });
+      setCrmMsg({ type: 'success', text: 'Connection successful — AccuLynx API key is valid.' });
+    } catch (err) {
+      setCrmMsg({ type: 'error', text: 'Connection failed: ' + err.message });
+    } finally {
+      setCrmTesting(false);
+    }
+  }
+
+  async function toggleCrmPush(enabled) {
+    setCrmToggling(true);
+    setCrmMsg(null);
+    try {
+      await api(`/api/companies/${selectedCompany.id}/acculynx-push`, {
+        method: 'PUT',
+        body: JSON.stringify({ enabled }),
+      });
+      await fetchCompanyAndSync(selectedCompany.id);
+    } catch (err) {
+      setCrmMsg({ type: 'error', text: err.message });
+    } finally {
+      setCrmToggling(false);
+    }
+  }
+
   const totalReps = users.filter(u => u.role === 'rep').length;
   const totalManagers = users.filter(u => u.role === 'manager').length;
 
@@ -214,6 +246,9 @@ export default function AdminPanel() {
   }
 
   if (selectedCompany) {
+    const keyConfigured = selectedCompany.acculynx_key_configured;
+    const pushEnabled = selectedCompany.acculynx_push_enabled;
+
     return (
       <div className="min-h-screen bg-stone-50">
         <div style={{ backgroundColor: '#1c1917' }} className="px-6 py-4 flex items-center justify-between">
@@ -225,6 +260,7 @@ export default function AdminPanel() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+          {/* Company header */}
           <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
             <div className="flex items-center gap-4">
               <CompanyLogo company={selectedCompany} size="lg" />
@@ -250,6 +286,7 @@ export default function AdminPanel() {
             )}
           </div>
 
+          {/* Managers */}
           <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-stone-800">Managers</h3>
@@ -278,7 +315,7 @@ export default function AdminPanel() {
                 <div key={m.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
                   <div>
                     <div className="font-medium text-stone-800">{m.first_name} {m.last_name}</div>
-                    <div className="text-stone-500 text-sm">@{m.username}</div>
+                    <div className="text-stone-500 text-sm">@{m.username}{m.email ? ` · ${m.email}` : <span className="text-amber-500"> · no email set</span>}</div>
                   </div>
                   <button onClick={() => removeUser(m.id, `${m.first_name} ${m.last_name}`)} className="text-red-500 text-sm">Remove</button>
                 </div>
@@ -286,6 +323,7 @@ export default function AdminPanel() {
             )}
           </div>
 
+          {/* Reps */}
           <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-stone-800">Reps</h3>
@@ -333,6 +371,108 @@ export default function AdminPanel() {
             )}
           </div>
 
+          {/* CRM Integration */}
+          <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-stone-800 mb-1">CRM Integration</h3>
+            <p className="text-stone-500 text-sm mb-5">Connect this company's AccuLynx account to automatically push inspection leads.</p>
+
+            {crmMsg && (
+              <div className={`mb-4 text-sm px-4 py-3 rounded-lg border ${
+                crmMsg.type === 'success'
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-red-50 text-red-700 border-red-200'
+              }`}>
+                {crmMsg.text}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {/* Key status */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-stone-700">AccuLynx API Key</span>
+                  {keyConfigured
+                    ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Configured ✓</span>
+                    : <span className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Not configured</span>
+                  }
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder={keyConfigured ? 'Paste new key to replace…' : 'Paste API key from AccuLynx…'}
+                    value={crmApiKey}
+                    onChange={e => setCrmApiKey(e.target.value)}
+                    className="flex-1 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-800 outline-none focus:border-orange-500 text-sm"
+                    style={{ fontSize: '14px' }}
+                    autoComplete="off"
+                  />
+                  <button
+                    onClick={saveCrmKey}
+                    disabled={crmSaving}
+                    className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-60"
+                    style={{ backgroundColor: '#ea580c' }}
+                  >
+                    {crmSaving ? 'Saving…' : 'Save Key'}
+                  </button>
+                  {keyConfigured && !crmApiKey && (
+                    <button
+                      onClick={() => { setCrmApiKey(' '); }}
+                      className="px-4 py-2.5 rounded-xl text-red-500 text-sm font-medium border border-red-200 hover:bg-red-50"
+                      title="Clear key"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {keyConfigured && (
+                  <p className="text-xs text-stone-400 mt-1">The saved key is never shown. Paste a new one above to replace it.</p>
+                )}
+              </div>
+
+              {/* Test connection */}
+              {keyConfigured && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={testCrmConnection}
+                    disabled={crmTesting}
+                    className="px-4 py-2 rounded-xl text-sm font-medium border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+                  >
+                    {crmTesting ? 'Testing…' : 'Test Connection'}
+                  </button>
+                  <span className="text-stone-400 text-xs">Verifies the API key works against AccuLynx</span>
+                </div>
+              )}
+
+              {/* Push toggle */}
+              {keyConfigured && (
+                <div className="flex items-center justify-between py-3 border-t border-stone-100">
+                  <div>
+                    <div className="text-sm font-medium text-stone-800">Push leads to AccuLynx</div>
+                    <div className="text-xs text-stone-400 mt-0.5">
+                      When enabled, inspection-set leads are automatically created as contacts + jobs in AccuLynx.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleCrmPush(!pushEnabled)}
+                    disabled={crmToggling}
+                    className={[
+                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 shrink-0 ml-4',
+                      pushEnabled ? 'bg-orange-500' : 'bg-stone-300',
+                    ].join(' ')}
+                  >
+                    <span
+                      className={[
+                        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                        pushEnabled ? 'translate-x-6' : 'translate-x-1',
+                      ].join(' ')}
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Delete company */}
           <div className="bg-white rounded-2xl border border-red-200 p-6 shadow-sm">
             <h3 className="text-lg font-bold text-red-700 mb-3">Delete Company</h3>
             <p className="text-stone-500 text-sm mb-3">Type <strong>{selectedCompany.name}</strong> to confirm deletion. This will also delete all associated users.</p>
@@ -355,6 +495,7 @@ export default function AdminPanel() {
           </div>
         </div>
 
+        {/* Add Rep modal */}
         {showAddRep && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
@@ -371,6 +512,7 @@ export default function AdminPanel() {
           </div>
         )}
 
+        {/* Add Manager modal */}
         {showAddManager && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
@@ -380,6 +522,8 @@ export default function AdminPanel() {
                 <input type="text" placeholder="Last Name" value={newManager.lastName} onChange={e => setNewManager(m => ({ ...m, lastName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
                 <input type="text" placeholder="Username" value={newManager.username} onChange={e => setNewManager(m => ({ ...m, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
                 <input type="password" placeholder="Password" value={newManager.password} onChange={e => setNewManager(m => ({ ...m, password: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="email" placeholder="Email (for lead notifications)" value={newManager.email} onChange={e => setNewManager(m => ({ ...m, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <p className="text-xs text-stone-400 -mt-1">Email is optional but required to receive lead notifications.</p>
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setShowAddManager(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
                   <button onClick={addManager} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Manager'}</button>
@@ -451,8 +595,13 @@ export default function AdminPanel() {
                 <div className="font-bold text-stone-800">{company.name}</div>
                 <div className="text-stone-500 text-xs">{company.website_url || 'No website'}</div>
               </div>
-              <div className="text-stone-500 text-sm">{company.rep_count || 0} reps</div>
-              <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Active</span>
+              <div className="flex items-center gap-3">
+                {company.acculynx_key_configured && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">CRM ✓</span>
+                )}
+                <div className="text-stone-500 text-sm">{company.rep_count || 0} reps</div>
+                <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Active</span>
+              </div>
             </div>
           ))}
         </div>
@@ -468,7 +617,17 @@ export default function AdminPanel() {
               <input type="text" placeholder="Phone Number" value={newCompany.phoneNumber} onChange={e => setNewCompany(c => ({ ...c, phoneNumber: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddCompany(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-                <button onClick={addCompany} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Company'}</button>
+                <button onClick={async () => {
+                  if (!newCompany.name) return;
+                  setSaving(true);
+                  try {
+                    await api('/api/companies', { method: 'POST', body: JSON.stringify(newCompany) });
+                    setNewCompany({ name: '', websiteUrl: '', phoneNumber: '' });
+                    setShowAddCompany(false);
+                    fetchCompanies();
+                  } catch (err) { alert(err.message); }
+                  finally { setSaving(false); }
+                }} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Company'}</button>
               </div>
             </div>
           </div>

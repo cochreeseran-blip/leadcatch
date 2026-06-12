@@ -2,6 +2,8 @@ import { Router } from 'express';
 import fetch from 'node-fetch';
 import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { createContact, createJob } from '../services/acculynx.js';
+import { notifyManagersOfLead } from '../services/email.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -59,8 +61,18 @@ router.post('/lead', async (req, res) => {
       if (knockId) {
         await pool.query(`UPDATE knocks SET is_lead = true WHERE id = $1`, [knockId]);
       }
-      return res.json(rows[0]);
+
+      const lead = rows[0];
+      res.json(lead);
+
+      // Fire AccuLynx + email in background — don't block the response
+      if (knockId) {
+        setImmediate(() => pushLeadIntegrations(lead, req.user));
+      }
+      return;
     }
+
+    // Mock path (no DB)
     const lead = {
       id: nextLeadId++,
       knock_id: knockId,
@@ -84,6 +96,84 @@ router.post('/lead', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+async function pushLeadIntegrations(lead, repUser) {
+  try {
+    // Only trigger for inspection_set outcome
+    const { rows: knockRows } = await pool.query(
+      `SELECT outcome FROM knocks WHERE id = $1`, [lead.knock_id]
+    );
+    const outcome = knockRows[0]?.outcome;
+    if (outcome !== 'inspection_set') return;
+
+    const { rows: compRows } = await pool.query(
+      `SELECT name, acculynx_api_key, acculynx_push_enabled FROM companies WHERE id = $1`,
+      [lead.company_id]
+    );
+    const company = compRows[0];
+    if (!company) return;
+
+    const repName = [repUser.firstName, repUser.lastName].filter(Boolean).join(' ') || repUser.username;
+
+    // ── AccuLynx push ────────────────────────────────────────────────────────
+    if (company.acculynx_push_enabled && company.acculynx_api_key) {
+      let syncStatus = 'failed';
+      let acculynxError = null;
+      let contactId = null;
+      let jobId = null;
+
+      try {
+        const nameParts = (lead.homeowner_name || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const contact = await createContact(company.acculynx_api_key, {
+          firstName,
+          lastName,
+          phone: lead.phone,
+          address: lead.address,
+        });
+        contactId = contact?.id ?? contact?.contactId ?? null;
+
+        const job = await createJob(company.acculynx_api_key, {
+          contactId,
+          address: lead.address,
+          notes: `Inspection set via KnockTrakr by ${repName}`,
+        });
+        jobId = job?.id ?? job?.jobId ?? null;
+
+        syncStatus = 'success';
+        console.log(`AccuLynx: pushed lead ${lead.id} — contact ${contactId}, job ${jobId}`);
+      } catch (err) {
+        acculynxError = err.message;
+        console.error(`AccuLynx: failed to push lead ${lead.id}:`, err.message);
+      }
+
+      await pool.query(
+        `UPDATE knock_leads SET acculynx_sync_status=$1, acculynx_error=$2, acculynx_contact_id=$3, acculynx_job_id=$4 WHERE id=$5`,
+        [syncStatus, acculynxError, contactId?.toString() ?? null, jobId?.toString() ?? null, lead.id]
+      );
+    }
+
+    // ── Email notification ───────────────────────────────────────────────────
+    try {
+      await notifyManagersOfLead(pool, {
+        companyId: lead.company_id,
+        companyName: company.name,
+        repName,
+        address: lead.address,
+        homeownerName: lead.homeowner_name,
+        phone: lead.phone,
+        outcome,
+        timestamp: lead.created_at,
+      });
+    } catch (err) {
+      console.error(`Email: failed to notify managers for lead ${lead.id}:`, err.message);
+    }
+  } catch (err) {
+    console.error(`pushLeadIntegrations: unexpected error for lead ${lead.id}:`, err.message);
+  }
+}
 
 router.get('/stats', async (req, res) => {
   try {
