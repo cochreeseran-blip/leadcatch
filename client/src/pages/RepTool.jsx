@@ -71,22 +71,6 @@ function OutcomePill({ outcome }) {
   );
 }
 
-function ShiftTimer({ clockIn }) {
-  const [label, setLabel] = useState('');
-  useEffect(() => {
-    function tick() {
-      const ms = Date.now() - new Date(clockIn).getTime();
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      setLabel(`${h}:${String(m).padStart(2, '0')}`);
-    }
-    tick();
-    const id = setInterval(tick, 10000);
-    return () => clearInterval(id);
-  }, [clockIn]);
-  return <span className="text-xs font-mono text-stone-500 tabular-nums">{label}</span>;
-}
-
 function MapFlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
@@ -95,8 +79,12 @@ function MapFlyTo({ target }) {
   return null;
 }
 
+function mapsUrl(address) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
 export default function RepTool() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [userPos, setUserPos] = useState(null);
   const [mapTarget, setMapTarget] = useState(null);
@@ -106,14 +94,13 @@ export default function RepTool() {
   const [lng, setLng] = useState(null);
   const [accuracy, setAccuracy] = useState(null);
 
-  const [shift, setShift] = useState(null);
-  const [shiftLoading, setShiftLoading] = useState(false);
-
   const [todayKnocks, setTodayKnocks] = useState([]);
+  const [neighborhoods, setNeighborhoods] = useState([]);
 
   const [logOpen, setLogOpen] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [detailKey, setDetailKey] = useState(null);
+  const [neighborhoodsOpen, setNeighborhoodsOpen] = useState(false);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -123,7 +110,7 @@ export default function RepTool() {
 
   useEffect(() => {
     fetchTodayKnocks();
-    fetchCurrentShift();
+    fetchNeighborhoods();
     startPosWatch();
     return () => {
       if (posWatchRef.current) navigator.geolocation.clearWatch(posWatchRef.current);
@@ -153,15 +140,13 @@ export default function RepTool() {
     } catch {}
   }
 
-  async function fetchCurrentShift() {
+  async function fetchNeighborhoods() {
     try {
-      const data = await api('/api/knocktrakr/shift/current');
-      setShift(data || null);
+      const data = await api('/api/knocktrakr/neighborhoods/mine');
+      setNeighborhoods(Array.isArray(data) ? data : []);
     } catch {}
   }
 
-  // GPS accuracy fix: use watchPosition, only commit once accuracy ≤10m,
-  // with a 9s fallback that uses the best reading obtained so far.
   async function detectLocation() {
     if (!navigator.geolocation || locating) return;
     setLocating(true);
@@ -284,24 +269,6 @@ export default function RepTool() {
     setForm({ homeownerName: '', phone: '', outcome: '', notes: '' });
   }
 
-  async function clockIn() {
-    setShiftLoading(true);
-    try {
-      const data = await api('/api/knocktrakr/shift/start', { method: 'POST' });
-      setShift(data);
-    } catch (err) { alert(err.message); }
-    finally { setShiftLoading(false); }
-  }
-
-  async function clockOut() {
-    setShiftLoading(true);
-    try {
-      await api('/api/knocktrakr/shift/end', { method: 'POST' });
-      setShift(null);
-    } catch (err) { alert(err.message); }
-    finally { setShiftLoading(false); }
-  }
-
   const counts = {
     knocks: todayKnocks.length,
     talks: todayKnocks.filter(k => k.outcome !== 'no_answer').length,
@@ -316,9 +283,9 @@ export default function RepTool() {
     appointments: todayKnocks.filter(k => k.outcome === 'inspection_set'),
   };
 
-  const detailLabels = { knocks: "Knocks", talks: "Talks", walks: "Walks", appointments: "Appointments" };
+  const detailLabels = { knocks: 'Knocks', talks: 'Talks', walks: 'Walks', appointments: 'Appointments' };
 
-  const anySheetOpen = logOpen || !!detailKey;
+  const anySheetOpen = logOpen || !!detailKey || neighborhoodsOpen;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-stone-100">
@@ -378,26 +345,18 @@ export default function RepTool() {
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md border-b border-stone-200/60 shadow-sm">
         <span className="text-sm font-bold text-stone-900 tracking-tight">KnockTrakr</span>
         <div className="flex items-center gap-2">
-          {shift ? (
-            <>
-              <ShiftTimer clockIn={shift.clock_in} />
-              <button
-                onClick={clockOut}
-                disabled={shiftLoading}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 active:bg-red-600 disabled:opacity-50 transition-opacity"
-              >
-                {shiftLoading ? '…' : 'Clock Out'}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={clockIn}
-              disabled={shiftLoading}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-accent active:opacity-80 disabled:opacity-50 transition-opacity"
-            >
-              {shiftLoading ? '…' : 'Clock In'}
-            </button>
-          )}
+          <button
+            onClick={() => setNeighborhoodsOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-700 bg-stone-100 active:bg-stone-200 transition-colors"
+          >
+            Neighborhoods
+          </button>
+          <button
+            onClick={logout}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-500 border border-stone-200 active:bg-stone-50 transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
@@ -441,7 +400,7 @@ export default function RepTool() {
       <div
         className="fixed inset-0 z-30 bg-black/40 transition-opacity duration-300"
         style={{ opacity: anySheetOpen ? 1 : 0, pointerEvents: anySheetOpen ? 'auto' : 'none' }}
-        onClick={() => { resetLog(); setDetailKey(null); }}
+        onClick={() => { resetLog(); setDetailKey(null); setNeighborhoodsOpen(false); }}
       />
 
       {/* ── Log Knock sheet ── */}
@@ -616,6 +575,47 @@ export default function RepTool() {
                 <p className="text-xs text-stone-400 mt-0.5">{fmtTime(knock.created_at)}</p>
               </div>
               <OutcomePill outcome={knock.outcome} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Neighborhoods sheet ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        style={{ transform: neighborhoodsOpen ? 'translateY(0)' : 'translateY(110%)', maxHeight: '75vh' }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
+          <h2 className="text-base font-bold text-stone-900">
+            My Neighborhoods
+            <span className="ml-2 text-sm font-normal text-stone-400">{neighborhoods.length}</span>
+          </h2>
+          <button
+            onClick={() => setNeighborhoodsOpen(false)}
+            className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center text-xs text-stone-500 active:bg-stone-200 transition-colors"
+          >✕</button>
+        </div>
+        <div className="overflow-y-auto px-5 pb-10" style={{ maxHeight: 'calc(75vh - 90px)' }}>
+          {neighborhoods.length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-12">No neighborhoods assigned yet</p>
+          ) : neighborhoods.map(n => (
+            <div key={n.id} className="flex items-start justify-between py-4 border-b border-stone-100 last:border-0 gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-stone-800 leading-snug">{n.name}</p>
+                <p className="text-xs text-stone-500 mt-0.5 truncate">{n.address}</p>
+              </div>
+              <a
+                href={mapsUrl(n.address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-accent active:opacity-80 transition-opacity"
+                onClick={e => e.stopPropagation()}
+              >
+                Navigate
+              </a>
             </div>
           ))}
         </div>

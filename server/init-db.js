@@ -75,6 +75,24 @@ export async function initDb() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS neighborhoods (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      address TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS neighborhood_assignments (
+      neighborhood_id INTEGER REFERENCES neighborhoods(id) ON DELETE CASCADE,
+      rep_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      PRIMARY KEY (neighborhood_id, rep_id)
+    )
+  `);
+
   const { rows } = await pool.query('SELECT COUNT(*) FROM users');
   if (parseInt(rows[0].count) === 0) {
     const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);

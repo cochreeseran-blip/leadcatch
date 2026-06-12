@@ -337,59 +337,138 @@ router.get('/manager/export', async (req, res) => {
   }
 });
 
-router.get('/shift/current', async (req, res) => {
-  if (!dbAvailable) return res.json(null);
+// ── Neighborhoods ────────────────────────────────────────────────────────────
+
+// GET /neighborhoods/mine must be registered before /:id patterns
+router.get('/neighborhoods/mine', async (req, res) => {
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM rep_shifts WHERE rep_id = $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1`,
+      `SELECT n.id, n.name, n.address
+       FROM neighborhoods n
+       JOIN neighborhood_assignments na ON na.neighborhood_id = n.id
+       WHERE na.rep_id = $1
+       ORDER BY n.name ASC`,
       [req.user.id]
     );
-    res.json(rows[0] || null);
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/shift/start', async (req, res) => {
+router.get('/neighborhoods', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const { rows } = await pool.query(
-      `INSERT INTO rep_shifts (rep_id, company_id, clock_in) VALUES ($1, $2, NOW()) RETURNING *`,
-      [req.user.id, req.user.companyId]
+      `SELECT n.*,
+              COALESCE(
+                json_agg(json_build_object('id', u.id, 'name', CONCAT(u.first_name, ' ', u.last_name)))
+                FILTER (WHERE u.id IS NOT NULL), '[]'
+              ) AS assigned_reps
+       FROM neighborhoods n
+       LEFT JOIN neighborhood_assignments na ON na.neighborhood_id = n.id
+       LEFT JOIN users u ON u.id = na.rep_id
+       WHERE n.company_id = $1
+       GROUP BY n.id
+       ORDER BY n.created_at DESC`,
+      [req.user.companyId]
     );
-    res.json(rows[0]);
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/shift/end', async (req, res) => {
+router.post('/neighborhoods', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+  const { name, address } = req.body;
+  if (!name || !address) return res.status(400).json({ error: 'name and address required' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO neighborhoods (company_id, name, address) VALUES ($1, $2, $3) RETURNING *`,
+      [req.user.companyId, name, address]
+    );
+    res.json({ ...rows[0], assigned_reps: [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.put('/neighborhoods/:id', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+  const { name, address } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE neighborhoods SET name=$1, address=$2 WHERE id=$3 AND company_id=$4 RETURNING *`,
+      [name, address, req.params.id, req.user.companyId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    const { rows: assigned } = await pool.query(
+      `SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) AS name
+       FROM neighborhood_assignments na JOIN users u ON u.id = na.rep_id
+       WHERE na.neighborhood_id = $1`,
+      [req.params.id]
+    );
+    res.json({ ...rows[0], assigned_reps: assigned });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/neighborhoods/:id', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
-    const { rows: shiftRows } = await pool.query(
-      `SELECT * FROM rep_shifts WHERE rep_id = $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1`,
-      [req.user.id]
+    await pool.query(
+      `DELETE FROM neighborhoods WHERE id=$1 AND company_id=$2`,
+      [req.params.id, req.user.companyId]
     );
-    if (!shiftRows[0]) return res.status(404).json({ error: 'No open shift' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
-    const shift = shiftRows[0];
-    const { rows: knockCount } = await pool.query(
-      `SELECT COUNT(*) FROM knocks WHERE rep_id = $1 AND created_at >= $2`,
-      [req.user.id, shift.clock_in]
+// Replace all assignments for a neighborhood in one call
+router.put('/neighborhoods/:id/assign', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+  const { repIds } = req.body;
+  try {
+    const { rows: nRows } = await pool.query(
+      `SELECT id FROM neighborhoods WHERE id=$1 AND company_id=$2`,
+      [req.params.id, req.user.companyId]
     );
-    const { rows: leadCount } = await pool.query(
-      `SELECT COUNT(*) FROM knock_leads WHERE rep_id = $1 AND created_at >= $2`,
-      [req.user.id, shift.clock_in]
-    );
+    if (!nRows[0]) return res.status(404).json({ error: 'Not found' });
 
-    const { rows } = await pool.query(
-      `UPDATE rep_shifts SET clock_out = NOW(), total_knocks = $1, total_leads = $2
-       WHERE id = $3 RETURNING *`,
-      [parseInt(knockCount[0].count), parseInt(leadCount[0].count), shift.id]
-    );
-    res.json(rows[0]);
+    await pool.query(`DELETE FROM neighborhood_assignments WHERE neighborhood_id=$1`, [req.params.id]);
+    if (Array.isArray(repIds) && repIds.length > 0) {
+      await pool.query(
+        `INSERT INTO neighborhood_assignments (neighborhood_id, rep_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [req.params.id, repIds]
+      );
+    }
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
