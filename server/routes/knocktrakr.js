@@ -112,6 +112,27 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+router.get('/knocks', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dbAvailable) {
+      const { rows } = await pool.query(
+        `SELECT * FROM knocks WHERE rep_id = $1 AND created_at >= $2 ORDER BY created_at DESC`,
+        [req.user.id, today]
+      );
+      return res.json(rows);
+    }
+    const result = MOCK_KNOCKS
+      .filter(k => k.rep_id === req.user.id && new Date(k.created_at) >= today)
+      .slice().reverse();
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/manager/stats', async (req, res) => {
   if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
@@ -270,6 +291,20 @@ router.get('/manager/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="knocktrakr-export-${dateFrom}.csv"`);
     res.send(headers + csvRows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/shift/current', async (req, res) => {
+  if (!dbAvailable) return res.json(null);
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM rep_shifts WHERE rep_id = $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1`,
+      [req.user.id]
+    );
+    res.json(rows[0] || null);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

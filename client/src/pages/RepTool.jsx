@@ -5,189 +5,234 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default marker icon in React
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-// Custom icons for knock pins
-const greenIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+function makePinIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 28"><path fill="${color}" stroke="rgba(0,0,0,0.18)" stroke-width="0.5" d="M10 1C5.58 1 2 4.58 2 9c0 6.75 8 18 8 18s8-11.25 8-18c0-4.42-3.58-8-8-8z"/><circle fill="white" cx="10" cy="9" r="3.5"/></svg>`;
+  return new L.Icon({
+    iconUrl: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+    iconSize: [20, 28],
+    iconAnchor: [10, 28],
+    popupAnchor: [0, -30],
+  });
+}
 
-const greyIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+const greyPinIcon = makePinIcon('#9ca3af');
+const accentPinIcon = makePinIcon('#2563eb');
+
+const userDotIcon = new L.DivIcon({
+  className: '',
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:2.5px solid white;box-shadow:0 0 0 4px rgba(37,99,235,0.2)"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
 });
 
 const OUTCOMES = [
   { value: 'not_interested', label: 'Not Interested' },
   { value: 'has_contractor', label: 'Has Contractor' },
-  { value: 'not_available', label: 'Not Available Right Now' },
+  { value: 'not_available', label: 'Not Available' },
   { value: 'inspection_set', label: 'Inspection Set' },
   { value: 'other', label: 'Other' },
 ];
 
-function MapCenter({ position }) {
+const OUTCOME_LABELS = {
+  no_answer: 'No Answer',
+  not_interested: 'Not Interested',
+  has_contractor: 'Has Contractor',
+  not_available: 'Not Available',
+  inspection_set: 'Inspection Set',
+  other: 'Other',
+};
+
+const OUTCOME_PILL_COLORS = {
+  no_answer: 'bg-stone-100 text-stone-500',
+  not_interested: 'bg-red-50 text-red-600',
+  has_contractor: 'bg-orange-50 text-orange-600',
+  not_available: 'bg-yellow-50 text-yellow-700',
+  inspection_set: 'bg-blue-50 text-blue-700',
+  other: 'bg-stone-100 text-stone-500',
+};
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function OutcomePill({ outcome }) {
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${OUTCOME_PILL_COLORS[outcome] || OUTCOME_PILL_COLORS.other}`}>
+      {OUTCOME_LABELS[outcome] || outcome}
+    </span>
+  );
+}
+
+function ShiftTimer({ clockIn }) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    function tick() {
+      const ms = Date.now() - new Date(clockIn).getTime();
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      setLabel(`${h}:${String(m).padStart(2, '0')}`);
+    }
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, [clockIn]);
+  return <span className="text-xs font-mono text-stone-500 tabular-nums">{label}</span>;
+}
+
+function MapFlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
-    if (position) {
-      map.setView(position, 18);
-    }
-  }, [position, map]);
+    if (target) map.flyTo(target, 17, { animate: true, duration: 0.5 });
+  }, [target, map]);
   return null;
 }
 
 export default function RepTool() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+
+  const [userPos, setUserPos] = useState(null);
+  const [mapTarget, setMapTarget] = useState(null);
+  const [locating, setLocating] = useState(false);
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
   const [accuracy, setAccuracy] = useState(null);
-  const [stats, setStats] = useState({ knocks_today: 0, leads_today: 0 });
-  const [flash, setFlash] = useState(null);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
+
+  const [shift, setShift] = useState(null);
+  const [shiftLoading, setShiftLoading] = useState(false);
+
+  const [todayKnocks, setTodayKnocks] = useState([]);
+
+  const [logOpen, setLogOpen] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [detailKey, setDetailKey] = useState(null);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
-  const [knocks, setKnocks] = useState([]);
-  const [userPos, setUserPos] = useState(null);
-  const panelRef = useRef(null);
-  const watchIdRef = useRef(null);
+  const [flash, setFlash] = useState(null);
+
+  const posWatchRef = useRef(null);
+  const mapInitRef = useRef(false);
 
   useEffect(() => {
-    fetchStats();
     fetchTodayKnocks();
-    startLocationWatch();
+    fetchCurrentShift();
+    startPosWatch();
     return () => {
-      if (watchIdRef.current) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+      if (posWatchRef.current) navigator.geolocation.clearWatch(posWatchRef.current);
     };
   }, []);
 
-  async function fetchStats() {
-    try {
-      const data = await api('/api/knocktrakr/stats');
-      setStats(data);
-    } catch {}
+  useEffect(() => {
+    if (userPos && !mapInitRef.current) {
+      mapInitRef.current = true;
+      setMapTarget([userPos.lat, userPos.lng]);
+    }
+  }, [userPos]);
+
+  function startPosWatch() {
+    if (!navigator.geolocation) return;
+    posWatchRef.current = navigator.geolocation.watchPosition(
+      pos => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
   }
 
   async function fetchTodayKnocks() {
     try {
       const data = await api('/api/knocktrakr/knocks');
-      setKnocks(data || []);
+      setTodayKnocks(Array.isArray(data) ? data : []);
     } catch {}
   }
 
-  function startLocationWatch() {
-    if (!navigator.geolocation) return;
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy: acc } = pos.coords;
-        setUserPos({ lat: latitude, lng: longitude });
-        setAccuracy(Math.round(acc));
-      },
-      (err) => console.log('GPS watch error:', err),
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
+  async function fetchCurrentShift() {
+    try {
+      const data = await api('/api/knocktrakr/shift/current');
+      setShift(data || null);
+    } catch {}
   }
 
+  // GPS accuracy fix: use watchPosition, only commit once accuracy ≤10m,
+  // with a 9s fallback that uses the best reading obtained so far.
   async function detectLocation() {
+    if (!navigator.geolocation || locating) return;
     setLocating(true);
-    setShowSearch(false);
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
+    setAddress('');
+    setAccuracy(null);
+
+    let best = null;
+    let resolved = false;
+
+    async function applyReading(r) {
+      setLat(r.latitude);
+      setLng(r.longitude);
+      setUserPos({ lat: r.latitude, lng: r.longitude });
+      setMapTarget([r.latitude, r.longitude]);
+      setAccuracy(Math.round(r.accuracy));
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${r.latitude}&lon=${r.longitude}&format=json&zoom=18&addressdetails=1`,
+          { headers: { 'User-Agent': 'KnockTrakr/1.0 (useleadcatch.com)' } }
+        );
+        const data = await res.json();
+        const a = data.address || {};
+        const full = [a.house_number, a.road, a.city || a.town || a.village, a.state]
+          .filter(Boolean).join(', ');
+        setAddress(full || data.display_name || '');
+      } catch {
+        setAddress(`${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`);
+      }
+      setLocating(false);
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (resolved) return;
         const { latitude, longitude, accuracy: acc } = pos.coords;
-        setLat(latitude);
-        setLng(longitude);
-        setUserPos({ lat: latitude, lng: longitude });
-        setAccuracy(Math.round(acc));
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18&addressdetails=1`,
-            { headers: { 'User-Agent': 'KnockTrakr/1.0 (useleadcatch.com)' } }
-          );
-          const data = await res.json();
-          const addr = data.address;
-          const full = `${addr.house_number || ''} ${addr.road || ''}, ${addr.city || addr.town || ''}, ${addr.state || ''}`.trim();
-          setAddress(full || data.display_name || '');
-          setSearchQuery(full || data.display_name || '');
-          setShowSearch(true);
-        } catch {
-          setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-          setSearchQuery(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-          setShowSearch(true);
+        if (!best || acc < best.accuracy) best = { latitude, longitude, accuracy: acc };
+        if (acc <= 10) {
+          resolved = true;
+          navigator.geolocation.clearWatch(watchId);
+          applyReading(best);
         }
-        setLocating(false);
       },
       () => {
-        setLocating(false);
-        alert('Could not get location. Please enable location access.');
+        if (resolved) return;
+        resolved = true;
+        navigator.geolocation.clearWatch(watchId);
+        if (best) applyReading(best);
+        else setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
-  }
 
-  async function searchAddress() {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1&addressdetails=1`,
-        { headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'KnockTrakr/1.0' } }
-      );
-      const data = await res.json();
-      if (data && data.length > 0) {
-        const result = data[0];
-        setLat(parseFloat(result.lat));
-        setLng(parseFloat(result.lon));
-        setAddress(result.display_name);
-        setAccuracy(null);
-        setShowFlash('Address confirmed!', 'green');
-      } else {
-        alert('Address not found. Please try a different search.');
-      }
-    } catch (err) {
-      alert('Failed to search address. Please try again.');
-    } finally {
-      setSearching(false);
-    }
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      navigator.geolocation.clearWatch(watchId);
+      if (best) applyReading(best);
+      else setLocating(false);
+    }, 9000);
   }
 
   function adjustStreetNumber(delta) {
     setAddress(prev => {
-      const match = prev.match(/^(\d+)(.*)/);
-      if (match) {
-        const newNum = Math.max(0, parseInt(match[1]) + delta);
-        return `${newNum}${match[2]}`;
-      }
-      return prev;
+      const m = prev.match(/^(\d+)(.*)/);
+      return m ? `${Math.max(0, parseInt(m[1]) + delta)}${m[2]}` : prev;
     });
   }
 
-  function showFlash(text, color = 'green') {
-    setFlash({ text, color });
-    setTimeout(() => setFlash(null), 1500);
+  function showFlash(text) {
+    setFlash(text);
+    setTimeout(() => setFlash(null), 1400);
   }
 
   async function handleNoAnswer() {
@@ -197,19 +242,10 @@ export default function RepTool() {
         method: 'POST',
         body: JSON.stringify({ address, lat, lng, outcome: 'no_answer' }),
       });
-      showFlash('Logged!', 'green');
-      setAddress('');
-      setLat(null);
-      setLng(null);
-      await fetchStats();
-      await fetchTodayKnocks();
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
-  function handleAnswered() {
-    setPanelOpen(true);
+      showFlash('Logged!');
+      resetLog();
+      fetchTodayKnocks();
+    } catch (err) { alert(err.message); }
   }
 
   async function handleSaveLead() {
@@ -222,9 +258,7 @@ export default function RepTool() {
       const knockData = await api('/api/knocktrakr/knock', {
         method: 'POST',
         body: JSON.stringify({
-          address,
-          lat,
-          lng,
+          address, lat, lng,
           outcome: form.outcome,
           notes: form.notes,
           isLead: form.outcome === 'inspection_set',
@@ -240,284 +274,360 @@ export default function RepTool() {
           notes: form.notes,
         }),
       });
-      showFlash('Lead Saved!', 'orange');
-      setPanelOpen(false);
-      setForm({ homeownerName: '', phone: '', outcome: '', notes: '' });
-      setAddress('');
-      setLat(null);
-      setLng(null);
-      await fetchStats();
-      await fetchTodayKnocks();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
-    }
+      showFlash('Saved!');
+      resetLog();
+      fetchTodayKnocks();
+    } catch (err) { alert(err.message); }
+    finally { setSaving(false); }
   }
 
-  const repName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : '';
+  function resetLog() {
+    setLogOpen(false);
+    setShowLeadForm(false);
+    setAddress('');
+    setLat(null);
+    setLng(null);
+    setAccuracy(null);
+    setForm({ homeownerName: '', phone: '', outcome: '', notes: '' });
+  }
+
+  async function clockIn() {
+    setShiftLoading(true);
+    try {
+      const data = await api('/api/knocktrakr/shift/start', { method: 'POST' });
+      setShift(data);
+    } catch (err) { alert(err.message); }
+    finally { setShiftLoading(false); }
+  }
+
+  async function clockOut() {
+    setShiftLoading(true);
+    try {
+      await api('/api/knocktrakr/shift/end', { method: 'POST' });
+      setShift(null);
+    } catch (err) { alert(err.message); }
+    finally { setShiftLoading(false); }
+  }
+
+  const counts = {
+    knocks: todayKnocks.length,
+    talks: todayKnocks.filter(k => k.outcome !== 'no_answer').length,
+    walks: todayKnocks.filter(k => k.outcome !== 'no_answer' && k.outcome !== 'inspection_set').length,
+    appointments: todayKnocks.filter(k => k.outcome === 'inspection_set').length,
+  };
+
+  const detailItems = {
+    knocks: todayKnocks,
+    talks: todayKnocks.filter(k => k.outcome !== 'no_answer'),
+    walks: todayKnocks.filter(k => k.outcome !== 'no_answer' && k.outcome !== 'inspection_set'),
+    appointments: todayKnocks.filter(k => k.outcome === 'inspection_set'),
+  };
+
+  const detailLabels = { knocks: "Knocks", talks: "Talks", walks: "Walks", appointments: "Appointments" };
+
+  const anySheetOpen = logOpen || !!detailKey;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col relative overflow-hidden" style={{ maxWidth: '100vw' }}>
+    <div className="fixed inset-0 overflow-hidden bg-stone-100">
+
+      {/* Flash */}
       {flash && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-          style={{ backgroundColor: flash.color === 'green' ? 'rgba(22,163,74,0.85)' : 'rgba(234,88,12,0.85)' }}
-        >
-          <div className="text-white text-4xl font-bold">{flash.text}</div>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+          <div className="bg-stone-900/80 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-xl">
+            <span className="text-white text-2xl font-bold tracking-wide">{flash}</span>
+          </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
-        <span className="text-xl font-bold" style={{ color: '#ea580c' }}>KnockTrakr</span>
-        <div className="flex items-center gap-3">
-          <span className="text-stone-600 text-sm font-medium">{repName}</span>
-          <button
-            onClick={logout}
-            className="text-sm text-stone-500 border border-stone-300 rounded-lg px-3 py-1 active:bg-stone-100"
-          >
-            Logout
-          </button>
+      {/* Full-screen map */}
+      <div className="absolute inset-0 z-0">
+        <MapContainer
+          center={userPos ? [userPos.lat, userPos.lng] : [39.8283, -98.5795]}
+          zoom={userPos ? 17 : 4}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {mapTarget && <MapFlyTo target={mapTarget} />}
+          {userPos && (
+            <>
+              <Circle
+                center={[userPos.lat, userPos.lng]}
+                radius={accuracy || 15}
+                pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.12, weight: 1.5 }}
+              />
+              <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon} />
+            </>
+          )}
+          {todayKnocks.map((k, i) =>
+            k.lat && k.lng ? (
+              <Marker
+                key={i}
+                position={[parseFloat(k.lat), parseFloat(k.lng)]}
+                icon={k.outcome === 'no_answer' ? greyPinIcon : accentPinIcon}
+              >
+                <Popup>
+                  <div className="text-xs leading-snug">
+                    <p className="font-semibold text-stone-800">{k.address}</p>
+                    <p className="text-stone-400 mt-0.5">{OUTCOME_LABELS[k.outcome] || k.outcome}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ) : null
+          )}
+        </MapContainer>
+      </div>
+
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md border-b border-stone-200/60 shadow-sm">
+        <span className="text-sm font-bold text-stone-900 tracking-tight">KnockTrakr</span>
+        <div className="flex items-center gap-2">
+          {shift ? (
+            <>
+              <ShiftTimer clockIn={shift.clock_in} />
+              <button
+                onClick={clockOut}
+                disabled={shiftLoading}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 active:bg-red-600 disabled:opacity-50 transition-opacity"
+              >
+                {shiftLoading ? '…' : 'Clock Out'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={clockIn}
+              disabled={shiftLoading}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-accent active:opacity-80 disabled:opacity-50 transition-opacity"
+            >
+              {shiftLoading ? '…' : 'Clock In'}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col px-4 pt-4 pb-32 gap-3 overflow-y-auto">
-        {/* Map Container */}
-        <div className="w-full rounded-xl overflow-hidden border border-stone-300" style={{ height: '45vh', minHeight: '300px' }}>
-          <MapContainer
-            center={userPos || { lat: 39.8283, lng: -98.5795 }}
-            zoom={userPos ? 18 : 4}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {userPos && (
-              <>
-                <Circle
-                  center={[userPos.lat, userPos.lng]}
-                  radius={accuracy || 10}
-                  pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }}
-                />
-                <Marker position={[userPos.lat, userPos.lng]}>
-                  <Popup>You are here</Popup>
-                </Marker>
-                <MapCenter position={[userPos.lat, userPos.lng]} />
-              </>
-            )}
-            {knocks.map((knock, idx) => (
-              knock.lat && knock.lng && (
-                <Marker
-                  key={idx}
-                  position={[knock.lat, knock.lng]}
-                  icon={knock.outcome === 'no_answer' ? greyIcon : greenIcon}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-medium">{knock.address}</p>
-                      <p className="text-stone-500">{knock.outcome === 'no_answer' ? 'No Answer' : 'Answered'}</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              )
-            ))}
-          </MapContainer>
+      {/* Counter card */}
+      <div className="absolute left-4 right-4 z-10 bottom-24">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-md border border-stone-200/50 grid grid-cols-4">
+          {[
+            { key: 'knocks', label: 'Knocks' },
+            { key: 'talks', label: 'Talks' },
+            { key: 'walks', label: 'Walks' },
+            { key: 'appointments', label: 'Appts' },
+          ].map(({ key, label }, idx, arr) => (
+            <button
+              key={key}
+              onClick={() => setDetailKey(key)}
+              className={[
+                'flex flex-col items-center py-3 active:bg-stone-50 transition-colors',
+                idx === 0 ? 'rounded-l-2xl' : '',
+                idx === arr.length - 1 ? 'rounded-r-2xl' : 'border-r border-stone-200/60',
+              ].join(' ')}
+            >
+              <span className="text-2xl font-bold text-stone-900 tabular-nums leading-none">{counts[key]}</span>
+              <span className="text-[10px] text-stone-400 uppercase tracking-wider mt-1">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Log Knock FAB */}
+      <div className="absolute left-4 right-4 z-10 bottom-6">
+        <button
+          onClick={() => setLogOpen(true)}
+          className="w-full py-4 rounded-2xl text-white font-semibold text-base bg-accent shadow-lg active:scale-[0.98] transition-transform"
+          style={{ minHeight: '56px' }}
+        >
+          Log Knock
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-30 bg-black/40 transition-opacity duration-300"
+        style={{ opacity: anySheetOpen ? 1 : 0, pointerEvents: anySheetOpen ? 'auto' : 'none' }}
+        onClick={() => { resetLog(); setDetailKey(null); }}
+      />
+
+      {/* ── Log Knock sheet ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        style={{ transform: logOpen ? 'translateY(0)' : 'translateY(110%)' }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 bg-stone-300 rounded-full" />
         </div>
 
-        <button
-          onClick={detectLocation}
-          disabled={locating}
-          className="w-full py-3 rounded-xl text-white font-semibold text-base transition active:scale-95 disabled:opacity-60"
-          style={{ backgroundColor: '#1c1917', minHeight: '56px', fontSize: '16px' }}
-        >
-          {locating ? 'Detecting...' : '📍 Detect My Location'}
-        </button>
+        {!showLeadForm ? (
+          <div className="px-5 pt-2 pb-10 space-y-3 overflow-y-auto" style={{ maxHeight: '80vh' }}>
+            <h2 className="text-lg font-bold text-stone-900">Log Knock</h2>
 
-        {accuracy !== null && (
-          <div className={`text-sm px-3 py-2 rounded-lg ${accuracy > 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-            {accuracy > 50 ? (
-              <span>⚠️ Low GPS accuracy (±{accuracy} meters) — consider searching manually</span>
-            ) : (
-              <span>📍 Location detected (±{accuracy} meters)</span>
+            <button
+              onClick={detectLocation}
+              disabled={locating}
+              className="w-full py-3.5 rounded-xl text-white text-sm font-semibold bg-accent active:opacity-80 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
+            >
+              {locating ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                  Detecting…
+                </>
+              ) : '📍 Get My Location'}
+            </button>
+
+            {accuracy !== null && (
+              <div className={`text-xs px-3 py-2 rounded-lg ${accuracy > 20 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                {accuracy > 20 ? `⚠ Low accuracy ±${accuracy}m` : `✓ ±${accuracy}m`}
+              </div>
             )}
-          </div>
-        )}
 
-        {showSearch && (
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2">
-            <label className="text-sm text-stone-600 font-medium">Verify or correct address:</label>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => adjustStreetNumber(-1)}
+                className="w-11 h-11 rounded-xl bg-stone-100 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-200 shrink-0"
+              >−</button>
               <input
                 type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search address..."
-                className="flex-1 border border-stone-300 rounded-xl px-3 py-2 text-stone-800 outline-none focus:border-orange-500"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="Address"
+                className="flex-1 border border-stone-200 rounded-xl px-3 py-2.5 text-stone-800 text-sm outline-none focus:border-stone-400 transition-colors"
                 style={{ fontSize: '16px' }}
               />
               <button
-                onClick={searchAddress}
-                disabled={searching}
-                className="px-4 py-2 rounded-xl bg-orange-600 text-white font-medium text-sm active:bg-orange-700 disabled:opacity-60"
-              >
-                {searching ? '...' : 'Search'}
-              </button>
+                onClick={() => adjustStreetNumber(1)}
+                className="w-11 h-11 rounded-xl bg-stone-100 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-200 shrink-0"
+              >+</button>
             </div>
-            <p className="text-xs text-stone-500">Edit the address above and click Search to confirm exact location</p>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                onClick={handleNoAnswer}
+                disabled={!address}
+                className="py-4 rounded-xl bg-stone-100 text-stone-700 font-semibold text-sm active:bg-stone-200 disabled:opacity-40 transition-opacity"
+                style={{ minHeight: '56px' }}
+              >No Answer</button>
+              <button
+                onClick={() => setShowLeadForm(true)}
+                disabled={!address}
+                className="py-4 rounded-xl text-white font-semibold text-sm bg-accent active:opacity-80 disabled:opacity-40 transition-opacity"
+                style={{ minHeight: '56px' }}
+              >Answered ›</button>
+            </div>
+
+            <button onClick={resetLog} className="w-full py-2 text-sm text-stone-400 active:text-stone-600 transition-colors">
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="px-5 pt-2 pb-10 space-y-4 overflow-y-auto" style={{ maxHeight: '85vh' }}>
+            <button
+              onClick={() => setShowLeadForm(false)}
+              className="flex items-center gap-1 text-sm font-medium text-stone-500 active:text-stone-700 transition-colors"
+            >
+              ‹ <span className="text-stone-400 text-xs truncate max-w-[220px]">{address}</span>
+            </button>
+
+            <h2 className="text-lg font-bold text-stone-900">Answered Door</h2>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-400 uppercase tracking-wide mb-1.5">Homeowner Name *</label>
+              <input
+                type="text"
+                placeholder="Full name"
+                value={form.homeownerName}
+                onChange={e => setForm(f => ({ ...f, homeownerName: e.target.value }))}
+                className="w-full border border-stone-200 rounded-xl px-3 py-3 text-stone-800 outline-none focus:border-stone-400 transition-colors"
+                style={{ fontSize: '16px' }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-400 uppercase tracking-wide mb-1.5">Phone</label>
+              <input
+                type="tel"
+                placeholder="(555) 000-0000"
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full border border-stone-200 rounded-xl px-3 py-3 text-stone-800 outline-none focus:border-stone-400 transition-colors"
+                style={{ fontSize: '16px' }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-400 uppercase tracking-wide mb-1.5">Outcome *</label>
+              <select
+                value={form.outcome}
+                onChange={e => setForm(f => ({ ...f, outcome: e.target.value }))}
+                className="w-full border border-stone-200 rounded-xl px-3 py-3 text-stone-800 outline-none focus:border-stone-400 bg-white transition-colors"
+                style={{ fontSize: '16px' }}
+              >
+                <option value="">Select outcome…</option>
+                {OUTCOMES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-400 uppercase tracking-wide mb-1.5">Notes</label>
+              <textarea
+                rows={2}
+                placeholder="Optional notes…"
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                className="w-full border border-stone-200 rounded-xl px-3 py-3 text-stone-800 outline-none focus:border-stone-400 transition-colors resize-none"
+                style={{ fontSize: '16px' }}
+              />
+            </div>
+
+            <button
+              onClick={handleSaveLead}
+              disabled={saving || !form.homeownerName || !form.outcome}
+              className="w-full py-4 rounded-xl text-white font-bold text-base bg-accent active:opacity-80 disabled:opacity-40 transition-opacity"
+              style={{ minHeight: '56px' }}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
           </div>
         )}
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => adjustStreetNumber(-1)}
-            className="w-12 h-12 rounded-xl bg-stone-200 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
-            style={{ minHeight: '48px' }}
-          >
-            −
-          </button>
-          <input
-            type="text"
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="Address (or detect location above)"
-            className="flex-1 border border-stone-300 rounded-xl px-4 py-2 text-stone-800 outline-none focus:border-orange-500 transition"
-            style={{ fontSize: '16px', minHeight: '48px' }}
-          />
-          <button
-            onClick={() => adjustStreetNumber(1)}
-            className="w-12 h-12 rounded-xl bg-stone-200 text-stone-700 text-xl font-bold flex items-center justify-center active:bg-stone-300 flex-shrink-0"
-            style={{ minHeight: '48px' }}
-          >
-            +
-          </button>
-        </div>
-
-        <div className="flex gap-3 mt-1">
-          <button
-            onClick={handleNoAnswer}
-            disabled={!address}
-            className="flex-1 py-4 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
-            style={{ backgroundColor: '#9ca3af', minHeight: '64px', fontSize: '18px' }}
-          >
-            NO ANSWER
-          </button>
-          <button
-            onClick={handleAnswered}
-            disabled={!address}
-            className="flex-1 py-4 rounded-xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
-            style={{ backgroundColor: '#ea580c', minHeight: '64px', fontSize: '18px' }}
-          >
-            ANSWERED
-          </button>
-        </div>
       </div>
 
+      {/* ── Counter detail sheet ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 border-t border-stone-200 bg-white px-6 py-4 flex items-center justify-center gap-8"
-        style={{ zIndex: 30 }}
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        style={{ transform: detailKey ? 'translateY(0)' : 'translateY(110%)', maxHeight: '75vh' }}
       >
-        <div className="text-center">
-          <div className="text-2xl font-bold text-stone-800">{stats.knocks_today}</div>
-          <div className="text-xs text-stone-500 uppercase tracking-wide">Knocks Today</div>
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 bg-stone-300 rounded-full" />
         </div>
-        <div className="w-px h-10 bg-stone-200" />
-        <div className="text-center">
-          <div className="text-2xl font-bold" style={{ color: '#ea580c' }}>{stats.leads_today}</div>
-          <div className="text-xs text-stone-500 uppercase tracking-wide">Leads Today</div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
+          <h2 className="text-base font-bold text-stone-900">
+            Today's {detailKey ? detailLabels[detailKey] : ''}
+            <span className="ml-2 text-sm font-normal text-stone-400">
+              {detailKey ? detailItems[detailKey].length : 0}
+            </span>
+          </h2>
+          <button
+            onClick={() => setDetailKey(null)}
+            className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center text-xs text-stone-500 active:bg-stone-200 transition-colors"
+          >✕</button>
+        </div>
+        <div className="overflow-y-auto px-5 pb-10" style={{ maxHeight: 'calc(75vh - 90px)' }}>
+          {detailKey && detailItems[detailKey].length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-12">Nothing yet today</p>
+          ) : detailKey && detailItems[detailKey].map((knock, i) => (
+            <div key={i} className="flex items-start justify-between py-3 border-b border-stone-100 last:border-0 gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-stone-800 leading-snug truncate">{knock.address}</p>
+                <p className="text-xs text-stone-400 mt-0.5">{fmtTime(knock.created_at)}</p>
+              </div>
+              <OutcomePill outcome={knock.outcome} />
+            </div>
+          ))}
         </div>
       </div>
 
-      {panelOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setPanelOpen(false)}>
-          <div
-            ref={panelRef}
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col"
-            style={{ height: '65vh' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1.5 rounded-full bg-stone-300" />
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
-              <h2 className="text-xl font-bold text-stone-800 mb-1">Log Answered Door</h2>
-
-              <div>
-                <label className="block text-sm text-stone-500 mb-1">Homeowner Name *</label>
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  value={form.homeownerName}
-                  onChange={e => setForm(f => ({ ...f, homeownerName: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
-                  style={{ fontSize: '16px', minHeight: '56px' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-stone-500 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="(555) 000-0000"
-                  value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
-                  style={{ fontSize: '16px', minHeight: '56px' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-stone-500 mb-1">Outcome *</label>
-                <select
-                  value={form.outcome}
-                  onChange={e => setForm(f => ({ ...f, outcome: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500 bg-white"
-                  style={{ fontSize: '16px', minHeight: '56px' }}
-                >
-                  <option value="">Select outcome...</option>
-                  {OUTCOMES.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-stone-500 mb-1">Notes</label>
-                <textarea
-                  rows={3}
-                  placeholder="Any notes..."
-                  value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
-                  style={{ fontSize: '16px' }}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 px-5 pb-6 pt-3 border-t border-stone-100">
-              <button
-                onClick={() => {
-                  setPanelOpen(false);
-                  setForm({ homeownerName: '', phone: '', outcome: '', notes: '' });
-                }}
-                className="flex-1 py-4 rounded-xl text-stone-700 font-semibold bg-stone-200 active:bg-stone-300"
-                style={{ minHeight: '64px', fontSize: '16px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveLead}
-                disabled={saving}
-                className="flex-1 py-4 rounded-xl text-white font-bold active:scale-95 disabled:opacity-60"
-                style={{ backgroundColor: '#ea580c', minHeight: '64px', fontSize: '16px' }}
-              >
-                {saving ? 'Saving...' : 'Save Lead'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
