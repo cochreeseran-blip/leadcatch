@@ -542,6 +542,28 @@ router.post('/manager/reps/:repId/resend-invite', async (req, res) => {
   }
 });
 
+router.delete('/manager/reps/:repId', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT id FROM users WHERE id = $1 AND company_id = $2 AND role = 'rep'`,
+      [req.params.repId, req.user.companyId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Rep not found' });
+
+    await pool.query(`UPDATE knocks SET rep_id = NULL WHERE rep_id = $1`, [req.params.repId]);
+    await pool.query(`UPDATE knock_leads SET rep_id = NULL WHERE rep_id = $1`, [req.params.repId]);
+    await pool.query(`DELETE FROM users WHERE id = $1`, [req.params.repId]);
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── Neighborhoods ────────────────────────────────────────────────────────────
 
 // GET /neighborhoods/mine must be registered before /:id patterns

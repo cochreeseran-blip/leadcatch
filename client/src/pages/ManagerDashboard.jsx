@@ -166,7 +166,7 @@ export default function ManagerDashboard() {
   async function removeRep(repId, repName) {
     if (!confirm(`Remove ${repName}? This cannot be undone.`)) return;
     try {
-      await api(`/api/users/${repId}`, { method: 'DELETE' });
+      await api(`/api/knocktrakr/manager/reps/${repId}`, { method: 'DELETE' });
       fetchReps();
     } catch (err) { alert(err.message); }
   }

@@ -77,6 +77,9 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ error: 'Cannot delete yourself' });
   }
   try {
+    // Null out FK references so historical knock data is preserved
+    await pool.query(`UPDATE knocks SET rep_id = NULL WHERE rep_id = $1`, [req.params.id]);
+    await pool.query(`UPDATE knock_leads SET rep_id = NULL WHERE rep_id = $1`, [req.params.id]);
     await pool.query(`DELETE FROM users WHERE id = $1`, [req.params.id]);
     res.json({ deleted: true });
   } catch (err) {
