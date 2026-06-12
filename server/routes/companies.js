@@ -1,7 +1,54 @@
 import { Router } from 'express';
 import fetch from 'node-fetch';
+import dns from 'dns';
+import net from 'net';
+import { promisify } from 'util';
 import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
+
+const dnsLookup = promisify(dns.lookup);
+
+function isPrivateIp(ip) {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split('.').map(Number);
+    return (
+      a === 127 ||
+      a === 10 ||
+      a === 0 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254)
+    );
+  }
+  if (net.isIPv6(ip)) {
+    const n = ip.toLowerCase();
+    return n === '::1' || n.startsWith('fc') || n.startsWith('fd') || n.startsWith('fe80');
+  }
+  return true;
+}
+
+async function assertSafeUrl(urlString) {
+  let parsed;
+  try { parsed = new URL(urlString); } catch { throw new Error('Invalid URL'); }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Only HTTP/HTTPS URLs are allowed');
+  }
+
+  const hostname = parsed.hostname;
+
+  if (hostname === 'localhost' || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+    throw new Error('Internal hostnames are not allowed');
+  }
+
+  if (net.isIP(hostname)) {
+    if (isPrivateIp(hostname)) throw new Error('Private IP addresses are not allowed');
+    return;
+  }
+
+  const { address } = await dnsLookup(hostname);
+  if (isPrivateIp(address)) throw new Error('URL resolves to a private IP address');
+}
 
 const router = Router();
 router.use(authMiddleware);
@@ -72,6 +119,12 @@ router.get('/:id/branding', async (req, res) => {
     let url = company.website_url;
     if (!url.startsWith('http')) url = 'https://' + url;
     const domain = new URL(url).hostname;
+
+    try {
+      await assertSafeUrl(url);
+    } catch (ssrfErr) {
+      return res.status(400).json({ error: `Unsafe URL: ${ssrfErr.message}` });
+    }
 
     let logoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
     let themeColor = '#ea580c';

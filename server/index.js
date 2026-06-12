@@ -37,6 +37,11 @@ if (existsSync(publicPath)) {
 }
 
 async function start() {
+  if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET environment variable is not set');
+    process.exit(1);
+  }
+
   try {
     await initDb();
   } catch (err) {

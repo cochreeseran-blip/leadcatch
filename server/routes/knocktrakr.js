@@ -195,6 +195,13 @@ router.get('/manager/reps/:repId/knocks', async (req, res) => {
   if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  if (req.user.role === 'manager') {
+    const { rows: repCheck } = await pool.query(
+      `SELECT id FROM users WHERE id = $1 AND company_id = $2`,
+      [req.params.repId, req.user.companyId]
+    );
+    if (!repCheck[0]) return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     const dateFrom = req.query.dateFrom || new Date().toISOString().slice(0, 10);
     const dateTo = req.query.dateTo || new Date().toISOString().slice(0, 10);
