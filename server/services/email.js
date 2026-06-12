@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM = 'KnockTrakr <notifications@useleadcatch.com>';
+const FROM = 'KnockTrakr <onboarding@resend.dev>';
 
 function buildLeadHtml({ repName, companyName, address, homeownerName, phone, outcome, timestamp }) {
   const outcomeLabel = outcome === 'inspection_set' ? 'Inspection Set' : outcome;
