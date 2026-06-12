@@ -178,15 +178,8 @@ export default function RepTool() {
       setMapTarget([r.latitude, r.longitude]);
       setAccuracy(Math.round(r.accuracy));
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${r.latitude}&lon=${r.longitude}&format=json&zoom=18&addressdetails=1`,
-          { headers: { 'User-Agent': 'KnockTrakr/1.0 (useleadcatch.com)' } }
-        );
-        const data = await res.json();
-        const a = data.address || {};
-        const full = [a.house_number, a.road, a.city || a.town || a.village, a.state]
-          .filter(Boolean).join(', ');
-        setAddress(full || data.display_name || '');
+        const data = await api(`/api/knocktrakr/geocode/reverse?lat=${r.latitude}&lng=${r.longitude}`);
+        setAddress(data.address || `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`);
       } catch {
         setAddress(`${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`);
       }

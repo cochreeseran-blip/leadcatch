@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import fetch from 'node-fetch';
 import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -130,6 +131,45 @@ router.get('/knocks', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/geocode/reverse', async (req, res) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'Geocoding not configured' });
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status !== 'OK' || !data.results?.[0]) {
+      console.log(`Geocode: no result for (${lat}, ${lng}) — status: ${data.status}`);
+      return res.json({ address: null });
+    }
+
+    const components = data.results[0].address_components;
+    const get = (type, field = 'long_name') =>
+      components.find(c => c.types.includes(type))?.[field] ?? '';
+
+    const streetNumber = get('street_number');
+    const route        = get('route');
+    const city         = get('locality') || get('sublocality_level_1') || get('administrative_area_level_2');
+    const state        = get('administrative_area_level_1', 'short_name');
+    const zip          = get('postal_code');
+
+    const street  = [streetNumber, route].filter(Boolean).join(' ');
+    const address = [street, city, [state, zip].filter(Boolean).join(' ')]
+      .filter(Boolean).join(', ');
+
+    console.log(`Geocode: (${lat}, ${lng}) → "${address}"`);
+    res.json({ address: address || data.results[0].formatted_address });
+  } catch (err) {
+    console.error('Geocode error:', err.message);
+    res.status(500).json({ error: 'Geocoding failed' });
   }
 });
 
