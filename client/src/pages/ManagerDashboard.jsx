@@ -46,10 +46,12 @@ export default function ManagerDashboard() {
   const [reps, setReps] = useState([]);
   const [expandedRep, setExpandedRep] = useState(null);
   const [repKnocks, setRepKnocks] = useState({});
-  const [showAddRep, setShowAddRep] = useState(false);
-  const [newRep, setNewRep] = useState({ firstName: '', lastName: '' });
-  const [createdCreds, setCreatedCreds] = useState(null);
-  const [addingRep, setAddingRep] = useState(false);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '' });
+  const [inviteResult, setInviteResult] = useState(null); // { username, email, inviteUrl, emailSent }
+  const [inviting, setInviting] = useState(false);
+  const [resendingId, setResendingId] = useState(null); // repId currently being resent
+  const [resendResult, setResendResult] = useState({}); // { [repId]: { ok, inviteUrl, emailSent } }
 
   // ── Neighborhoods state ──
   const [neighborhoods, setNeighborhoods] = useState([]);
@@ -87,7 +89,7 @@ export default function ManagerDashboard() {
   async function fetchReps() {
     try {
       const data = await api(`/api/knocktrakr/manager/reps?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
-      setReps(data);
+      setReps(Array.isArray(data) ? data : []);
     } catch {}
   }
 
@@ -131,29 +133,34 @@ export default function ManagerDashboard() {
     } catch (err) { alert(err.message); }
   }
 
-  async function addRep() {
-    if (!newRep.firstName || !newRep.lastName) return;
-    setAddingRep(true);
+  async function inviteRep() {
+    if (!inviteForm.firstName || !inviteForm.lastName || !inviteForm.email) return;
+    setInviting(true);
     try {
-      const username = `${newRep.firstName}_${newRep.lastName}`.toLowerCase().replace(/\s+/g, '');
-      const allUsers = await api('/api/users');
-      let n = 1;
-      while (allUsers.find(u => u.username === `doorknock${n}`)) n++;
-      const password = `doorknock${n}`;
-      await api('/api/users', {
+      const data = await api('/api/knocktrakr/invite-rep', {
         method: 'POST',
-        body: JSON.stringify({
-          username, password, role: 'rep',
-          companyId: user.companyId,
-          firstName: newRep.firstName, lastName: newRep.lastName,
-          knocktrakrEnabled: true,
-        }),
+        body: JSON.stringify(inviteForm),
       });
-      setCreatedCreds({ username, password });
-      setNewRep({ firstName: '', lastName: '' });
+      setInviteResult(data);
+      setInviteForm({ firstName: '', lastName: '', email: '' });
       fetchReps();
-    } catch (err) { alert(err.message); }
-    finally { setAddingRep(false); }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  async function resendInvite(repId) {
+    setResendingId(repId);
+    try {
+      const data = await api(`/api/knocktrakr/manager/reps/${repId}/resend-invite`, { method: 'POST' });
+      setResendResult(prev => ({ ...prev, [repId]: data }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setResendingId(null);
+    }
   }
 
   async function removeRep(repId, repName) {
@@ -166,17 +173,8 @@ export default function ManagerDashboard() {
 
   // ── Neighborhood CRUD ──
 
-  function openCreateNh() {
-    setEditingNh(null);
-    setNhForm({ name: '', address: '' });
-    setShowNhForm(true);
-  }
-
-  function openEditNh(nh) {
-    setEditingNh(nh);
-    setNhForm({ name: nh.name, address: nh.address });
-    setShowNhForm(true);
-  }
+  function openCreateNh() { setEditingNh(null); setNhForm({ name: '', address: '' }); setShowNhForm(true); }
+  function openEditNh(nh) { setEditingNh(nh); setNhForm({ name: nh.name, address: nh.address }); setShowNhForm(true); }
 
   async function saveNh() {
     if (!nhForm.name || !nhForm.address) return;
@@ -211,14 +209,11 @@ export default function ManagerDashboard() {
 
   function openAssign(nh) {
     setAssigningNh(nh);
-    const currentIds = (nh.assigned_reps || []).map(r => r.id);
-    setAssignSelected(currentIds);
+    setAssignSelected((nh.assigned_reps || []).map(r => r.id));
   }
 
   function toggleAssignRep(repId) {
-    setAssignSelected(prev =>
-      prev.includes(repId) ? prev.filter(id => id !== repId) : [...prev, repId]
-    );
+    setAssignSelected(prev => prev.includes(repId) ? prev.filter(id => id !== repId) : [...prev, repId]);
   }
 
   async function saveAssignment() {
@@ -285,11 +280,11 @@ export default function ManagerDashboard() {
                   Export CSV
                 </button>
                 <button
-                  onClick={() => { setShowAddRep(true); setCreatedCreds(null); }}
+                  onClick={() => { setShowInviteForm(true); setInviteResult(null); }}
                   className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
                   style={{ backgroundColor: '#ea580c' }}
                 >
-                  + Add Rep
+                  + Invite Rep
                 </button>
               </div>
             </div>
@@ -333,38 +328,62 @@ export default function ManagerDashboard() {
                     <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Leads</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Conv%</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide hidden md:table-cell">Last Active</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Details</th>
-                    <th className="px-4 py-3"></th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reps.length === 0 && (
-                    <tr><td colSpan={7} className="text-center py-8 text-stone-400">No reps found</td></tr>
+                    <tr><td colSpan={6} className="text-center py-8 text-stone-400">No reps yet — invite your first one above</td></tr>
                   )}
                   {reps.map(rep => (
                     <React.Fragment key={rep.rep_id}>
                       <tr className="border-b border-stone-100 hover:bg-stone-50">
-                        <td className="px-5 py-4 font-medium text-stone-800">{rep.name || rep.username}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-stone-800">{rep.name || rep.username}</span>
+                            {rep.invite_pending && (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending Setup</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-stone-400">@{rep.username}</div>
+                        </td>
                         <td className="px-4 py-4 text-center text-stone-700">{rep.knocks_count}</td>
                         <td className="px-4 py-4 text-center font-semibold" style={{ color: '#ea580c' }}>{rep.leads_count}</td>
                         <td className="px-4 py-4 text-center text-stone-700">{rep.conversion_rate}%</td>
                         <td className="px-4 py-4 text-stone-500 text-sm hidden md:table-cell">
-                          {rep.last_active ? new Date(rep.last_active).toLocaleString() : 'Never'}
+                          {rep.last_active ? new Date(rep.last_active).toLocaleString() : '—'}
                         </td>
                         <td className="px-4 py-4 text-center">
-                          <button onClick={() => toggleRep(rep.rep_id)} className="text-sm text-blue-600 hover:underline">
-                            {expandedRep === rep.rep_id ? 'Hide' : 'View'}
-                          </button>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <button onClick={() => removeRep(rep.rep_id, rep.name || rep.username)} className="text-sm text-red-500 hover:underline">
-                            Remove
-                          </button>
+                          <div className="flex items-center justify-center gap-3">
+                            {rep.invite_pending ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <button
+                                  onClick={() => resendInvite(rep.rep_id)}
+                                  disabled={resendingId === rep.rep_id}
+                                  className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+                                >
+                                  {resendingId === rep.rep_id ? 'Sending…' : 'Resend Invite'}
+                                </button>
+                                {resendResult[rep.rep_id] && (
+                                  <span className="text-xs text-green-600">
+                                    {resendResult[rep.rep_id].emailSent ? 'Sent!' : 'Link generated'}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <button onClick={() => toggleRep(rep.rep_id)} className="text-sm text-blue-600 hover:underline">
+                                {expandedRep === rep.rep_id ? 'Hide' : 'View'}
+                              </button>
+                            )}
+                            <button onClick={() => removeRep(rep.rep_id, rep.name || rep.username)} className="text-sm text-red-500 hover:underline">
+                              Remove
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                      {expandedRep === rep.rep_id && (
+                      {expandedRep === rep.rep_id && !rep.invite_pending && (
                         <tr>
-                          <td colSpan={7} className="bg-stone-50 px-6 py-4">
+                          <td colSpan={6} className="bg-stone-50 px-6 py-4">
                             {!repKnocks[rep.rep_id] ? (
                               <div className="text-stone-400 text-sm">Loading...</div>
                             ) : repKnocks[rep.rep_id].length === 0 ? (
@@ -452,24 +471,9 @@ export default function ManagerDashboard() {
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={() => openAssign(nh)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 transition-colors"
-                        >
-                          Assign Reps
-                        </button>
-                        <button
-                          onClick={() => openEditNh(nh)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteNh(nh)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          Delete
-                        </button>
+                        <button onClick={() => openAssign(nh)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 transition-colors">Assign Reps</button>
+                        <button onClick={() => openEditNh(nh)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 transition-colors">Edit</button>
+                        <button onClick={() => deleteNh(nh)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">Delete</button>
                       </div>
                     </div>
                   </div>
@@ -480,23 +484,30 @@ export default function ManagerDashboard() {
         )}
       </div>
 
-      {/* ── Add Rep modal ── */}
-      {showAddRep && (
+      {/* ── Invite Rep modal ── */}
+      {showInviteForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-stone-800 mb-4">Add Rep</h2>
-            {createdCreds ? (
+            <h2 className="text-xl font-bold text-stone-800 mb-4">Invite Rep</h2>
+
+            {inviteResult ? (
               <div>
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-                  <div className="text-green-800 font-semibold mb-2">Rep Created Successfully</div>
-                  <div className="text-sm font-mono space-y-1">
-                    <div><span className="text-stone-500">URL:</span> www.useleadcatch.com/login</div>
-                    <div><span className="text-stone-500">Username:</span> {createdCreds.username}</div>
-                    <div><span className="text-stone-500">Password:</span> {createdCreds.password}</div>
+                  <div className="text-green-800 font-semibold mb-2">
+                    {inviteResult.emailSent ? `Invite sent to ${inviteResult.email}` : 'Account created'}
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <div><span className="text-stone-500">Username:</span> <span className="font-mono font-semibold">{inviteResult.username}</span></div>
+                    {!inviteResult.emailSent && (
+                      <div className="mt-2">
+                        <div className="text-stone-500 text-xs mb-1">Email not sent — share this link directly:</div>
+                        <div className="bg-stone-100 rounded-lg px-3 py-2 text-xs font-mono break-all text-stone-700">{inviteResult.inviteUrl}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
-                  onClick={() => { setShowAddRep(false); setCreatedCreds(null); }}
+                  onClick={() => { setShowInviteForm(false); setInviteResult(null); }}
                   className="w-full py-3 rounded-xl text-white font-semibold"
                   style={{ backgroundColor: '#ea580c' }}
                 >
@@ -507,28 +518,35 @@ export default function ManagerDashboard() {
               <div className="space-y-3">
                 <input
                   type="text" placeholder="First Name"
-                  value={newRep.firstName}
-                  onChange={e => setNewRep(r => ({ ...r, firstName: e.target.value }))}
+                  value={inviteForm.firstName}
+                  onChange={e => setInviteForm(f => ({ ...f, firstName: e.target.value }))}
                   className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
                   style={{ fontSize: '16px' }}
                 />
                 <input
                   type="text" placeholder="Last Name"
-                  value={newRep.lastName}
-                  onChange={e => setNewRep(r => ({ ...r, lastName: e.target.value }))}
+                  value={inviteForm.lastName}
+                  onChange={e => setInviteForm(f => ({ ...f, lastName: e.target.value }))}
                   className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
                   style={{ fontSize: '16px' }}
                 />
+                <input
+                  type="email" placeholder="Email address"
+                  value={inviteForm.email}
+                  onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
+                  style={{ fontSize: '16px' }}
+                />
+                <p className="text-xs text-stone-400">An invite email will be sent with a link to set up their account.</p>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setShowAddRep(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">
-                    Cancel
-                  </button>
+                  <button onClick={() => setShowInviteForm(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
                   <button
-                    onClick={addRep} disabled={addingRep}
+                    onClick={inviteRep}
+                    disabled={inviting || !inviteForm.firstName || !inviteForm.lastName || !inviteForm.email}
                     className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60"
                     style={{ backgroundColor: '#ea580c' }}
                   >
-                    {addingRep ? 'Creating...' : 'Create Rep'}
+                    {inviting ? 'Sending…' : 'Send Invite'}
                   </button>
                 </div>
               </div>
@@ -541,43 +559,19 @@ export default function ManagerDashboard() {
       {showNhForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-stone-800 mb-4">
-              {editingNh ? 'Edit Neighborhood' : 'Add Neighborhood'}
-            </h2>
+            <h2 className="text-xl font-bold text-stone-800 mb-4">{editingNh ? 'Edit Neighborhood' : 'Add Neighborhood'}</h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Name *</label>
-                <input
-                  type="text" placeholder="e.g. Maplewood Estates"
-                  value={nhForm.name}
-                  onChange={e => setNhForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
-                  style={{ fontSize: '16px' }}
-                />
+                <input type="text" placeholder="e.g. Maplewood Estates" value={nhForm.name} onChange={e => setNhForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Starting Address *</label>
-                <input
-                  type="text" placeholder="e.g. 123 Maple St, Springfield, IL"
-                  value={nhForm.address}
-                  onChange={e => setNhForm(f => ({ ...f, address: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
-                  style={{ fontSize: '16px' }}
-                />
+                <input type="text" placeholder="e.g. 123 Maple St, Springfield, IL" value={nhForm.address} onChange={e => setNhForm(f => ({ ...f, address: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => { setShowNhForm(false); setEditingNh(null); }}
-                  className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveNh}
-                  disabled={savingNh || !nhForm.name || !nhForm.address}
-                  className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60"
-                  style={{ backgroundColor: '#ea580c' }}
-                >
+                <button onClick={() => { setShowNhForm(false); setEditingNh(null); }} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
+                <button onClick={saveNh} disabled={savingNh || !nhForm.name || !nhForm.address} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
                   {savingNh ? 'Saving…' : editingNh ? 'Save Changes' : 'Create'}
                 </button>
               </div>
@@ -592,41 +586,21 @@ export default function ManagerDashboard() {
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <h2 className="text-xl font-bold text-stone-800 mb-1">Assign Reps</h2>
             <p className="text-stone-500 text-sm mb-4">{assigningNh.name}</p>
-
-            {allReps.length === 0 ? (
-              <p className="text-stone-400 text-sm py-4 text-center">No reps in your company yet</p>
+            {allReps.filter(r => !r.invite_pending).length === 0 ? (
+              <p className="text-stone-400 text-sm py-4 text-center">No active reps yet</p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto mb-4">
-                {allReps.map(rep => (
-                  <label
-                    key={rep.rep_id}
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-stone-50 cursor-pointer transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={assignSelected.includes(rep.rep_id)}
-                      onChange={() => toggleAssignRep(rep.rep_id)}
-                      className="w-4 h-4 accent-orange-500"
-                    />
+                {allReps.filter(r => !r.invite_pending).map(rep => (
+                  <label key={rep.rep_id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-stone-50 cursor-pointer transition-colors">
+                    <input type="checkbox" checked={assignSelected.includes(rep.rep_id)} onChange={() => toggleAssignRep(rep.rep_id)} className="w-4 h-4 accent-orange-500" />
                     <span className="text-stone-800 text-sm font-medium">{rep.name || rep.username}</span>
                   </label>
                 ))}
               </div>
             )}
-
             <div className="flex gap-3">
-              <button
-                onClick={() => { setAssigningNh(null); setAssignSelected([]); }}
-                className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveAssignment}
-                disabled={savingAssign}
-                className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60"
-                style={{ backgroundColor: '#ea580c' }}
-              >
+              <button onClick={() => { setAssigningNh(null); setAssignSelected([]); }} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
+              <button onClick={saveAssignment} disabled={savingAssign} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
                 {savingAssign ? 'Saving…' : 'Save'}
               </button>
             </div>

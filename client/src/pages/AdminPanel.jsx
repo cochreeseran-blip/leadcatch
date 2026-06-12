@@ -17,6 +17,9 @@ export default function AdminPanel() {
   const [newManager, setNewManager] = useState({ firstName: '', lastName: '', username: '', password: '', email: '' });
   const [createdRepCreds, setCreatedRepCreds] = useState(null);
   const [createdManagerCreds, setCreatedManagerCreds] = useState(null);
+  const [editingManager, setEditingManager] = useState(null); // manager user object
+  const [editManagerForm, setEditManagerForm] = useState({ firstName: '', lastName: '', username: '', email: '', role: 'manager', isActive: true });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [brandingLoading, setBrandingLoading] = useState(false);
   const [brandingMsg, setBrandingMsg] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -145,6 +148,48 @@ export default function AdminPanel() {
       alert(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openEditManager(m) {
+    setEditManagerForm({
+      firstName: m.first_name || '',
+      lastName: m.last_name || '',
+      username: m.username || '',
+      email: m.email || '',
+      role: m.role || 'manager',
+      isActive: m.is_active !== false,
+    });
+    setEditingManager(m);
+  }
+
+  async function saveEditManager() {
+    if (!editManagerForm.firstName || !editManagerForm.lastName || !editManagerForm.username) return;
+    setSavingEdit(true);
+    try {
+      await api(`/api/users/${editingManager.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          username: editManagerForm.username,
+          role: editManagerForm.role,
+          companyId: editingManager.company_id,
+          firstName: editManagerForm.firstName,
+          lastName: editManagerForm.lastName,
+          email: editManagerForm.email || null,
+          knocktrakrEnabled: editingManager.knocktrakr_enabled !== false,
+          isActive: editManagerForm.isActive,
+        }),
+      });
+      setEditingManager(null);
+      const updated = await api('/api/users');
+      setUsers(updated);
+      if (selectedCompany) {
+        setCompanyManagers(updated.filter(u => u.company_id === selectedCompany.id && u.role === 'manager'));
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -317,7 +362,10 @@ export default function AdminPanel() {
                     <div className="font-medium text-stone-800">{m.first_name} {m.last_name}</div>
                     <div className="text-stone-500 text-sm">@{m.username}{m.email ? ` · ${m.email}` : <span className="text-amber-500"> · no email set</span>}</div>
                   </div>
-                  <button onClick={() => removeUser(m.id, `${m.first_name} ${m.last_name}`)} className="text-red-500 text-sm">Remove</button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => openEditManager(m)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                    <button onClick={() => removeUser(m.id, `${m.first_name} ${m.last_name}`)} className="text-red-500 text-sm">Remove</button>
+                  </div>
                 </div>
               ))
             )}
@@ -494,6 +542,46 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+
+        {/* Edit Manager modal */}
+        {editingManager && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <h2 className="text-xl font-bold text-stone-800 mb-4">Edit Manager</h2>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" placeholder="First Name" value={editManagerForm.firstName} onChange={e => setEditManagerForm(f => ({ ...f, firstName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                  <input type="text" placeholder="Last Name" value={editManagerForm.lastName} onChange={e => setEditManagerForm(f => ({ ...f, lastName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                </div>
+                <input type="text" placeholder="Username" value={editManagerForm.username} onChange={e => setEditManagerForm(f => ({ ...f, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="email" placeholder="Email" value={editManagerForm.email} onChange={e => setEditManagerForm(f => ({ ...f, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Role</label>
+                    <select value={editManagerForm.role} onChange={e => setEditManagerForm(f => ({ ...f, role: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-orange-500" style={{ fontSize: '16px' }}>
+                      <option value="manager">Manager</option>
+                      <option value="rep">Rep</option>
+                      <option value="superadmin">Superadmin</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Status</label>
+                    <select value={editManagerForm.isActive ? 'active' : 'inactive'} onChange={e => setEditManagerForm(f => ({ ...f, isActive: e.target.value === 'active' }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-orange-500" style={{ fontSize: '16px' }}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEditingManager(null)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
+                  <button onClick={saveEditManager} disabled={savingEdit || !editManagerForm.firstName || !editManagerForm.lastName || !editManagerForm.username} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
+                    {savingEdit ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add Rep modal */}
         {showAddRep && (

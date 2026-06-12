@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import fetch from 'node-fetch';
+import { randomBytes } from 'crypto';
 import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { createContact, createJob } from '../services/acculynx.js';
-import { notifyManagersOfLead } from '../services/email.js';
+import { notifyManagersOfLead, sendInviteEmail } from '../services/email.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -320,6 +321,8 @@ router.get('/manager/reps', async (req, res) => {
       `SELECT u.id as rep_id,
               CONCAT(u.first_name, ' ', u.last_name) as name,
               u.username,
+              u.email,
+              (u.invite_token IS NOT NULL OR u.password_hash IS NULL) as invite_pending,
               COUNT(DISTINCT k.id) as knocks_count,
               COUNT(DISTINCT kl.id) as leads_count,
               MAX(k.created_at) as last_active
@@ -328,7 +331,7 @@ router.get('/manager/reps', async (req, res) => {
        LEFT JOIN knock_leads kl ON kl.rep_id = u.id AND kl.created_at >= $2 AND kl.created_at <= $3
        WHERE u.company_id = $1 AND u.role = 'rep'
        GROUP BY u.id
-       ORDER BY knocks_count DESC`,
+       ORDER BY invite_pending DESC, knocks_count DESC`,
       [companyId, from, to]
     );
 
@@ -421,6 +424,118 @@ router.get('/manager/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="knocktrakr-export-${dateFrom}.csv"`);
     res.send(headers + csvRows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── Rep invite (manager-only) ─────────────────────────────────────────────────
+
+router.post('/invite-rep', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+
+  const { firstName, lastName, email } = req.body;
+  if (!firstName || !lastName || !email) {
+    return res.status(400).json({ error: 'firstName, lastName, and email are required' });
+  }
+
+  try {
+    // Generate unique username
+    const base = `${firstName}_${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '') || 'rep';
+    let username = base;
+    let counter = 2;
+    while (true) {
+      const { rows: existing } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (existing.length === 0) break;
+      username = `${base}${counter++}`;
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    const { rows } = await pool.query(
+      `INSERT INTO users (company_id, first_name, last_name, username, email, role, password_hash, invite_token, invite_token_expires_at)
+       VALUES ($1, $2, $3, $4, $5, 'rep', NULL, $6, $7)
+       RETURNING id, first_name, last_name, username, email`,
+      [req.user.companyId, firstName, lastName, username, email, token, expiresAt]
+    );
+    const newUser = rows[0];
+
+    const appOrigin = process.env.ALLOWED_ORIGIN || 'https://www.useleadcatch.com';
+    const inviteUrl = `${appOrigin}/accept-invite?token=${token}`;
+
+    let emailSent = false;
+    try {
+      const { rows: compRows } = await pool.query('SELECT name FROM companies WHERE id = $1', [req.user.companyId]);
+      const companyName = compRows[0]?.name || 'Your Company';
+      await sendInviteEmail({ email, firstName, companyName, username, inviteUrl });
+      emailSent = true;
+    } catch (err) {
+      console.error('Invite email failed:', err.message);
+    }
+
+    res.json({
+      id: newUser.id,
+      firstName: newUser.first_name,
+      lastName: newUser.last_name,
+      username: newUser.username,
+      email: newUser.email,
+      inviteUrl,
+      emailSent,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/manager/reps/:repId/resend-invite', async (req, res) => {
+  if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, first_name, last_name, username, email FROM users
+       WHERE id = $1 AND company_id = $2 AND role = 'rep'
+         AND (invite_token IS NOT NULL OR password_hash IS NULL)`,
+      [req.params.repId, req.user.companyId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Pending rep not found' });
+    const rep = rows[0];
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE users SET invite_token = $1, invite_token_expires_at = $2 WHERE id = $3`,
+      [token, expiresAt, rep.id]
+    );
+
+    const appOrigin = process.env.ALLOWED_ORIGIN || 'https://www.useleadcatch.com';
+    const inviteUrl = `${appOrigin}/accept-invite?token=${token}`;
+
+    let emailSent = false;
+    try {
+      const { rows: compRows } = await pool.query('SELECT name FROM companies WHERE id = $1', [req.user.companyId]);
+      const companyName = compRows[0]?.name || 'Your Company';
+      await sendInviteEmail({
+        email: rep.email,
+        firstName: rep.first_name,
+        companyName,
+        username: rep.username,
+        inviteUrl,
+      });
+      emailSent = true;
+    } catch (err) {
+      console.error('Resend invite email failed:', err.message);
+    }
+
+    res.json({ ok: true, inviteUrl, emailSent });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

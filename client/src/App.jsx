@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { ProtectedRoute, RoleRoute } from './components/ProtectedRoute.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import AcceptInvite from './pages/AcceptInvite.jsx';
 import RepTool from './pages/RepTool.jsx';
 import ManagerDashboard from './pages/ManagerDashboard.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
@@ -13,6 +14,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route
         path="/knocktrakr/rep"
         element={
