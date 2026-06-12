@@ -77,7 +77,7 @@ export async function initDb() {
 
   const { rows } = await pool.query('SELECT COUNT(*) FROM users');
   if (parseInt(rows[0].count) === 0) {
-    const hash = await bcrypt.hash('admin123', 10);
+    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
     await pool.query(
       `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)`,
       ['admin', hash, 'superadmin']

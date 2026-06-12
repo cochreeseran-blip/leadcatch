@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

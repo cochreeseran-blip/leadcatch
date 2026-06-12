@@ -55,12 +55,12 @@ router.put('/:id', async (req, res) => {
       const hash = await bcrypt.hash(password, 10);
       query = `UPDATE users SET username=$1, password_hash=$2, role=$3, company_id=$4,
                first_name=$5, last_name=$6, knocktrakr_enabled=$7, is_active=$8
-               WHERE id=$9 RETURNING id, company_id, first_name, last_name, username, role, knocktrakr_enabled, is_active`;
+               WHERE id=$9 RETURNING id, company_id, first_name, last_name, username, role, knocktrakr_enabled, is_active, created_at`;
       params = [username, hash, role, companyId || null, firstName, lastName, knocktrakrEnabled !== false, isActive !== false, req.params.id];
     } else {
       query = `UPDATE users SET username=$1, role=$2, company_id=$3,
                first_name=$4, last_name=$5, knocktrakr_enabled=$6, is_active=$7
-               WHERE id=$8 RETURNING id, company_id, first_name, last_name, username, role, knocktrakr_enabled, is_active`;
+               WHERE id=$8 RETURNING id, company_id, first_name, last_name, username, role, knocktrakr_enabled, is_active, created_at`;
       params = [username, role, companyId || null, firstName, lastName, knocktrakrEnabled !== false, isActive !== false, req.params.id];
     }
     const { rows } = await pool.query(query, params);

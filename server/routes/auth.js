@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -12,10 +13,20 @@ const MOCK_USERS = [
   { id: 3, username: 'rep1', password_hash: '$2b$10$examplehash', role: 'rep', company_id: 1, first_name: 'John', last_name: 'Rep', knocktrakr_enabled: true },
 ];
 
-let dbAvailable = true;
-pool.query('SELECT 1').catch(() => { dbAvailable = false; console.log('Using mock data mode'); });
+let dbAvailable = false;
+pool.query('SELECT 1')
+  .then(() => { dbAvailable = true; })
+  .catch(() => { console.log('Auth: using mock data mode'); });
 
-router.post('/login', async (req, res) => {
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later' },
+});
+
+router.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   try {
     let user;
@@ -57,7 +68,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

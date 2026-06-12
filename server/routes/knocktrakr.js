@@ -5,8 +5,10 @@ import { authMiddleware } from '../middleware/auth.js';
 const router = Router();
 router.use(authMiddleware);
 
-let dbAvailable = true;
-pool.query('SELECT 1').catch(() => { dbAvailable = false; });
+let dbAvailable = false;
+pool.query('SELECT 1')
+  .then(() => { dbAvailable = true; })
+  .catch(() => {});
 
 const MOCK_KNOCKS = [];
 const MOCK_LEADS = [];
@@ -114,6 +116,7 @@ router.get('/manager/stats', async (req, res) => {
   if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const dateFrom = req.query.dateFrom || new Date().toISOString().slice(0, 10);
     const dateTo = req.query.dateTo || new Date().toISOString().slice(0, 10);
@@ -152,6 +155,7 @@ router.get('/manager/reps', async (req, res) => {
   if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const dateFrom = req.query.dateFrom || new Date().toISOString().slice(0, 10);
     const dateTo = req.query.dateTo || new Date().toISOString().slice(0, 10);
@@ -229,6 +233,7 @@ router.get('/manager/export', async (req, res) => {
   if (req.user.role !== 'manager' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const dateFrom = req.query.dateFrom || new Date().toISOString().slice(0, 10);
     const dateTo = req.query.dateTo || new Date().toISOString().slice(0, 10);
@@ -272,6 +277,7 @@ router.get('/manager/export', async (req, res) => {
 });
 
 router.post('/shift/start', async (req, res) => {
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const { rows } = await pool.query(
       `INSERT INTO rep_shifts (rep_id, company_id, clock_in) VALUES ($1, $2, NOW()) RETURNING *`,
@@ -285,6 +291,7 @@ router.post('/shift/start', async (req, res) => {
 });
 
 router.post('/shift/end', async (req, res) => {
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
   try {
     const { rows: shiftRows } = await pool.query(
       `SELECT * FROM rep_shifts WHERE rep_id = $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1`,
