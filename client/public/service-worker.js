@@ -2,7 +2,7 @@
 // Its main job is to make the app installable (Android needs a registered SW)
 // and to cache the shell so it opens fast and survives a flaky field connection.
 
-const CACHE = "knocktrakr-v1";
+const CACHE = "knocktrakr-v2";
 const SHELL = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
