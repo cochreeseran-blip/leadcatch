@@ -22,8 +22,19 @@ function makePinIcon(color) {
   });
 }
 
-const greyPinIcon = makePinIcon('#9ca3af');
-const accentPinIcon = makePinIcon('#E11D3A');
+const greyPinIcon   = makePinIcon('#9ca3af');
+const redPinIcon    = makePinIcon('#E11D3A');
+const greenPinIcon  = makePinIcon('#10b981');
+const amberPinIcon  = makePinIcon('#f59e0b');
+
+const OUTCOME_PIN = {
+  inspection_set: greenPinIcon,
+  not_interested: redPinIcon,
+  not_available:  amberPinIcon,
+  has_contractor: greyPinIcon,
+  no_answer:      greyPinIcon,
+  other:          greyPinIcon,
+};
 
 const userDotIcon = new L.DivIcon({
   className: '',
@@ -365,7 +376,7 @@ export default function RepTool() {
               <Marker
                 key={i}
                 position={[parseFloat(k.lat), parseFloat(k.lng)]}
-                icon={k.outcome === 'no_answer' ? greyPinIcon : accentPinIcon}
+                icon={OUTCOME_PIN[k.outcome] || greyPinIcon}
               >
                 <Popup>
                   <div className="text-xs leading-snug">
