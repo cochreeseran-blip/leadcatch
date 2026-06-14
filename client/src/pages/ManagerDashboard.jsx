@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 const OUTCOME_COLORS = {
   inspection_set: 'bg-emerald-50 text-emerald-700',
   not_interested: 'bg-red-50 text-red-600',
-  has_contractor: 'bg-red-50 text-red-600',
+  has_contractor: 'bg-stone-100 text-stone-500',
   not_available:  'bg-amber-50 text-amber-700',
   no_answer:      'bg-stone-100 text-stone-500',
   other:          'bg-stone-100 text-stone-500',
