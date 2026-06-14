@@ -27,9 +27,12 @@ const accentPinIcon = makePinIcon('#E11D3A');
 
 const userDotIcon = new L.DivIcon({
   className: '',
-  html: `<div style="width:14px;height:14px;border-radius:50%;background:#0A2540;border:2.5px solid white;box-shadow:0 0 0 4px rgba(10,37,64,0.22)"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
+  html: `<div style="position:relative;width:20px;height:20px;">
+    <div class="loc-pulse-ring"></div>
+    <div style="position:absolute;inset:0;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 10px rgba(37,99,235,0.55);z-index:1;"></div>
+  </div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 });
 
 const OUTCOMES = [
@@ -354,7 +357,7 @@ export default function RepTool() {
                 radius={accuracy || 15}
                 pathOptions={{ color: '#0A2540', fillColor: '#0A2540', fillOpacity: 0.10, weight: 1.5 }}
               />
-              <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon} />
+              <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon} zIndexOffset={1000} />
             </>
           )}
           {todayKnocks.map((k, i) =>
