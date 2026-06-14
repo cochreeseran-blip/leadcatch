@@ -564,6 +564,49 @@ router.delete('/manager/reps/:repId', async (req, res) => {
   }
 });
 
+// ── Leaderboard (rep + manager accessible) ───────────────────────────────────
+
+router.get('/leaderboard', async (req, res) => {
+  if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+  if (!req.user.companyId) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const dateFrom = req.query.dateFrom || new Date().toISOString().slice(0, 10);
+    const dateTo = req.query.dateTo || dateFrom;
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+    to.setHours(23, 59, 59, 999);
+
+    const { rows } = await pool.query(
+      `SELECT u.id as rep_id,
+              CONCAT(u.first_name, ' ', u.last_name) AS name,
+              u.username,
+              COUNT(DISTINCT k.id)  AS knocks_count,
+              COUNT(DISTINCT kl.id) AS leads_count
+       FROM users u
+       LEFT JOIN knocks k
+         ON k.rep_id = u.id AND k.created_at >= $2 AND k.created_at <= $3
+       LEFT JOIN knock_leads kl
+         ON kl.rep_id = u.id AND kl.created_at >= $2 AND kl.created_at <= $3
+       WHERE u.company_id = $1
+         AND u.role = 'rep'
+         AND (u.invite_token IS NULL AND u.password_hash IS NOT NULL)
+       GROUP BY u.id
+       ORDER BY leads_count DESC, knocks_count DESC`,
+      [req.user.companyId, from, to]
+    );
+
+    res.json(rows.map(r => ({
+      ...r,
+      knocks_count: parseInt(r.knocks_count),
+      leads_count: parseInt(r.leads_count),
+      is_me: r.rep_id === req.user.id,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── Neighborhoods ────────────────────────────────────────────────────────────
 
 // GET /neighborhoods/mine must be registered before /:id patterns

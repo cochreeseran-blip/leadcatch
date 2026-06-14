@@ -101,6 +101,8 @@ export default function RepTool() {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [detailKey, setDetailKey] = useState(null);
   const [neighborhoodsOpen, setNeighborhoodsOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -144,6 +146,14 @@ export default function RepTool() {
     try {
       const data = await api('/api/knocktrakr/neighborhoods/mine');
       setNeighborhoods(Array.isArray(data) ? data : []);
+    } catch {}
+  }
+
+  async function fetchLeaderboard() {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const data = await api(`/api/knocktrakr/leaderboard?dateFrom=${today}`);
+      setLeaderboard(Array.isArray(data) ? data : []);
     } catch {}
   }
 
@@ -285,7 +295,7 @@ export default function RepTool() {
 
   const detailLabels = { knocks: 'Knocks', talks: 'Talks', walks: 'Walks', appointments: 'Appointments' };
 
-  const anySheetOpen = logOpen || !!detailKey || neighborhoodsOpen;
+  const anySheetOpen = logOpen || !!detailKey || neighborhoodsOpen || leaderboardOpen;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-stone-100">
@@ -346,6 +356,13 @@ export default function RepTool() {
         <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
         <div className="flex items-center gap-2">
           <button
+            onClick={() => { setLeaderboardOpen(true); fetchLeaderboard(); }}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            style={{ color: 'var(--kt-red)', background: 'rgba(225,29,58,0.08)' }}
+          >
+            Leaderboard
+          </button>
+          <button
             onClick={() => setNeighborhoodsOpen(true)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
             style={{ color: 'var(--kt-navy)', background: 'rgba(10,37,64,0.07)' }}
@@ -402,7 +419,7 @@ export default function RepTool() {
       <div
         className="fixed inset-0 z-30 bg-black/40 transition-opacity duration-300"
         style={{ opacity: anySheetOpen ? 1 : 0, pointerEvents: anySheetOpen ? 'auto' : 'none' }}
-        onClick={() => { resetLog(); setDetailKey(null); setNeighborhoodsOpen(false); }}
+        onClick={() => { resetLog(); setDetailKey(null); setNeighborhoodsOpen(false); setLeaderboardOpen(false); }}
       />
 
       {/* ── Log Knock sheet ── */}
@@ -620,6 +637,59 @@ export default function RepTool() {
               </a>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Leaderboard sheet ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        style={{ transform: leaderboardOpen ? 'translateY(0)' : 'translateY(110%)', maxHeight: '80vh' }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
+          <h2 className="text-base font-bold" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
+            Today's Leaderboard
+          </h2>
+          <button
+            onClick={() => setLeaderboardOpen(false)}
+            className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center text-xs text-stone-500 active:bg-stone-200"
+          >✕</button>
+        </div>
+        <div className="overflow-y-auto px-4 pb-10 pt-2" style={{ maxHeight: 'calc(80vh - 80px)' }}>
+          {leaderboard.length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-10">No activity yet today</p>
+          ) : leaderboard.map((rep, i) => {
+            const medal = ['🥇', '🥈', '🥉'][i];
+            return (
+              <div
+                key={rep.rep_id}
+                className="flex items-center gap-4 py-3 border-b border-stone-100 last:border-0"
+                style={rep.is_me ? { background: 'rgba(225,29,58,0.04)', borderRadius: '10px', padding: '10px 8px', margin: '2px -8px' } : {}}
+              >
+                <div className="text-xl w-7 text-center flex-shrink-0">
+                  {medal ?? <span className="text-sm font-bold" style={{ color: 'var(--kt-muted)' }}>#{i + 1}</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm truncate" style={{ color: 'var(--kt-ink)' }}>
+                    {rep.name || rep.username}
+                    {rep.is_me && <span className="ml-2 text-xs font-normal" style={{ color: 'var(--kt-muted)' }}>you</span>}
+                  </div>
+                </div>
+                <div className="flex gap-4 text-center flex-shrink-0">
+                  <div>
+                    <div className="text-base font-bold" style={{ color: 'var(--kt-ink)' }}>{rep.knocks_count}</div>
+                    <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Knocks</div>
+                  </div>
+                  <div>
+                    <div className="text-base font-bold" style={{ color: 'var(--kt-red)' }}>{rep.leads_count}</div>
+                    <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Leads</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
