@@ -696,7 +696,15 @@ export default function RepTool() {
         </div>
         <div className="overflow-y-auto px-5 pb-10" style={{ maxHeight: 'calc(75vh - 90px)' }}>
           {neighborhoods.length === 0 ? (
-            <p className="text-center text-stone-400 text-sm py-12">No neighborhoods assigned yet</p>
+            <div className="flex flex-col items-center py-12 px-4 text-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'var(--kt-mist)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--kt-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--kt-ink)' }}>No areas assigned yet</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--kt-muted)' }}>Your manager hasn't assigned a neighborhood — check back soon.</p>
+            </div>
           ) : neighborhoods.map(n => (
             <div key={n.id} className="flex items-start justify-between py-4 border-b border-stone-100 last:border-0 gap-3">
               <div className="flex-1 min-w-0">
@@ -736,7 +744,15 @@ export default function RepTool() {
         </div>
         <div className="overflow-y-auto px-4 pb-10 pt-2" style={{ maxHeight: 'calc(80vh - 80px)' }}>
           {leaderboard.length === 0 ? (
-            <p className="text-center text-stone-400 text-sm py-10">No activity yet today</p>
+            <div className="flex flex-col items-center py-10 px-4 text-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'var(--kt-mist)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--kt-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--kt-ink)' }}>No knocks logged yet today</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--kt-muted)' }}>Get out there — first knock of the day wins the board.</p>
+            </div>
           ) : leaderboard.map((rep, i) => {
             const medal = ['🥇', '🥈', '🥉'][i];
             return (

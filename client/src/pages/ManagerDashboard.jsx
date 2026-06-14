@@ -317,8 +317,14 @@ export default function ManagerDashboard() {
 
             {/* Rep cards */}
             {reps.length === 0 ? (
-              <div className="bg-white rounded-xl p-10 text-center" style={{ border: '1px solid var(--kt-line)' }}>
-                <p style={{ color: 'var(--kt-muted)' }}>No reps yet — invite your first one above</p>
+              <div className="bg-white rounded-2xl p-10 text-center" style={{ border: '1px solid var(--kt-line)' }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--kt-mist)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--kt-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--kt-ink)' }}>No reps yet</p>
+                <p className="text-xs" style={{ color: 'var(--kt-muted)' }}>Invite your first rep using the button above.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -518,13 +524,19 @@ export default function ManagerDashboard() {
             </div>
 
             {nhLoading ? (
-              <div className="text-stone-400 text-center py-16">Loading…</div>
+              <div className="text-center py-16" style={{ color: 'var(--kt-muted)' }}>Loading…</div>
             ) : neighborhoods.length === 0 ? (
-              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-12 text-center">
-                <p className="text-stone-400 text-base mb-4">No neighborhoods yet</p>
+              <div className="bg-white rounded-2xl p-12 text-center" style={{ border: '1px solid var(--kt-line)' }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--kt-mist)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--kt-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--kt-ink)' }}>No neighborhoods yet</p>
+                <p className="text-xs mb-4" style={{ color: 'var(--kt-muted)' }}>Add areas to assign to your reps for focused canvassing.</p>
                 <button
                   onClick={openCreateNh}
-                  className="px-5 py-2 rounded-lg text-white text-sm font-semibold"
+                  className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold active:scale-95 transition-all"
                   style={{ backgroundColor: 'var(--kt-red)' }}
                 >
                   Add your first neighborhood
