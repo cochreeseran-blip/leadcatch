@@ -79,6 +79,18 @@ function MapFlyTo({ target }) {
   return null;
 }
 
+function FollowDot({ pos }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!pos) return;
+    const latlng = L.latLng(pos.lat, pos.lng);
+    if (!map.getBounds().contains(latlng)) {
+      map.panTo(latlng, { animate: true });
+    }
+  }, [pos]);
+  return null;
+}
+
 function mapsUrl(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
@@ -115,8 +127,19 @@ export default function RepTool() {
     fetchTodayKnocks();
     fetchNeighborhoods();
     startPosWatch();
+
+    function handleVisibility() {
+      if (document.hidden) {
+        stopPosWatch();
+      } else {
+        startPosWatch();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
-      if (posWatchRef.current) navigator.geolocation.clearWatch(posWatchRef.current);
+      stopPosWatch();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -129,11 +152,23 @@ export default function RepTool() {
 
   function startPosWatch() {
     if (!navigator.geolocation) return;
+    if (posWatchRef.current !== null) return;
     posWatchRef.current = navigator.geolocation.watchPosition(
-      pos => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      pos => {
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        setUserPos({ lat: latitude, lng: longitude, accuracy: Math.round(acc) });
+        setAccuracy(Math.round(acc));
+      },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
+  }
+
+  function stopPosWatch() {
+    if (posWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(posWatchRef.current);
+      posWatchRef.current = null;
+    }
   }
 
   async function fetchTodayKnocks() {
@@ -159,57 +194,45 @@ export default function RepTool() {
   }
 
   async function detectLocation() {
-    if (!navigator.geolocation || locating) return;
+    if (locating) return;
     setLocating(true);
     setAddress('');
-    setAccuracy(null);
 
-    let best = null;
-    let resolved = false;
-
-    async function applyReading(r) {
-      setLat(r.latitude);
-      setLng(r.longitude);
-      setUserPos({ lat: r.latitude, lng: r.longitude });
-      setMapTarget([r.latitude, r.longitude]);
-      setAccuracy(Math.round(r.accuracy));
+    // Fast path: use the already-known live position
+    if (userPos) {
+      setLat(userPos.lat);
+      setLng(userPos.lng);
       try {
-        const data = await api(`/api/knocktrakr/geocode/reverse?lat=${r.latitude}&lng=${r.longitude}`);
-        setAddress(data.address || `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`);
+        const data = await api(`/api/knocktrakr/geocode/reverse?lat=${userPos.lat}&lng=${userPos.lng}`);
+        setAddress(data.address || `${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}`);
       } catch {
-        setAddress(`${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`);
+        setAddress(`${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}`);
       }
       setLocating(false);
+      return;
     }
 
-    const watchId = navigator.geolocation.watchPosition(
-      pos => {
-        if (resolved) return;
+    // Fallback: GPS watch hasn't locked yet — one-time getCurrentPosition
+    if (!navigator.geolocation) { setLocating(false); return; }
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
         const { latitude, longitude, accuracy: acc } = pos.coords;
-        if (!best || acc < best.accuracy) best = { latitude, longitude, accuracy: acc };
-        if (acc <= 10) {
-          resolved = true;
-          navigator.geolocation.clearWatch(watchId);
-          applyReading(best);
+        setLat(latitude);
+        setLng(longitude);
+        setAccuracy(Math.round(acc));
+        setUserPos({ lat: latitude, lng: longitude, accuracy: Math.round(acc) });
+        setMapTarget([latitude, longitude]);
+        try {
+          const data = await api(`/api/knocktrakr/geocode/reverse?lat=${latitude}&lng=${longitude}`);
+          setAddress(data.address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        } catch {
+          setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         }
+        setLocating(false);
       },
-      () => {
-        if (resolved) return;
-        resolved = true;
-        navigator.geolocation.clearWatch(watchId);
-        if (best) applyReading(best);
-        else setLocating(false);
-      },
-      { enableHighAccuracy: true, maximumAge: 0 }
+      () => setLocating(false),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
-
-    setTimeout(() => {
-      if (resolved) return;
-      resolved = true;
-      navigator.geolocation.clearWatch(watchId);
-      if (best) applyReading(best);
-      else setLocating(false);
-    }, 9000);
   }
 
   function adjustStreetNumber(delta) {
@@ -323,6 +346,7 @@ export default function RepTool() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {mapTarget && <MapFlyTo target={mapTarget} />}
+          <FollowDot pos={userPos} />
           {userPos && (
             <>
               <Circle
@@ -503,8 +527,8 @@ export default function RepTool() {
             </button>
 
             {accuracy !== null && (
-              <div className={`text-xs px-3 py-2 rounded-lg ${accuracy > 20 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                {accuracy > 20 ? `⚠ Low accuracy ±${accuracy}m` : `✓ ±${accuracy}m`}
+              <div className={`text-xs px-3 py-2 rounded-lg ${accuracy > 50 ? 'bg-red-50 text-red-700' : accuracy > 20 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                {accuracy > 50 ? `✕ Poor signal ±${accuracy}m` : accuracy > 20 ? `⚠ Low accuracy ±${accuracy}m` : `✓ ±${accuracy}m`}
               </div>
             )}
 
