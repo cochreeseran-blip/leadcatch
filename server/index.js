@@ -15,7 +15,17 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || false }));
+// Support comma-separated origins for multi-domain transition (e.g. "https://useleadcatch.com,https://app.knocktrakr.com")
+const _allowedOrigins = process.env.ALLOWED_ORIGIN
+  ? process.env.ALLOWED_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
+  : [];
+app.use(cors({
+  origin: _allowedOrigins.length === 0
+    ? false
+    : _allowedOrigins.length === 1
+      ? _allowedOrigins[0]
+      : (origin, cb) => cb(null, !origin || _allowedOrigins.includes(origin)),
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
