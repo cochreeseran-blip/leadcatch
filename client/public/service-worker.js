@@ -1,8 +1,6 @@
-// KnockTrakr — minimal service worker
-// Its main job is to make the app installable (Android needs a registered SW)
-// and to cache the shell so it opens fast and survives a flaky field connection.
+// KnockTrakr service worker — network-first, version-gated cache bust
 
-const CACHE = "knocktrakr-v2";
+const CACHE = "knocktrakr-v3";
 const SHELL = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -14,27 +12,32 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.matchAll({ includeUncontrolled: true, type: "window" }))
+      .then((clients) => clients.forEach((client) => client.postMessage({ type: "SW_UPDATED" })))
   );
   self.clients.claim();
 });
 
-// Network-first for navigations (always try fresh data, fall back to cache offline).
-// Cache-first for static assets.
+// Network-first for everything — always try fresh, fall back to cache offline.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
-  if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req).catch(() => caches.match("/index.html"))
-    );
-    return;
-  }
+  // Skip non-http(s) requests
+  if (!req.url.startsWith("http")) return;
 
   event.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
+    fetch(req)
+      .then((res) => {
+        // Cache successful responses for offline fallback
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, clone));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req).then((cached) => cached || caches.match("/index.html")))
   );
 });
