@@ -127,18 +127,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Temporary: patch a user's role and company (admin only, remove after use)
-router.put('/:companyId/users/:userId', async (req, res) => {
-  const { role } = req.body;
-  try {
-    const { rows } = await pool.query(
-      `UPDATE users SET company_id = $1, role = $2 WHERE id = $3 RETURNING id, username, role, company_id`,
-      [req.params.companyId, role, req.params.userId]
-    );
-    res.json(rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 router.get('/:id/branding', async (req, res) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM companies WHERE id = $1`, [req.params.id]);
