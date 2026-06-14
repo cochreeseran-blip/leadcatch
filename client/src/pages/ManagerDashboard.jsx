@@ -268,44 +268,31 @@ export default function ManagerDashboard() {
         {activeTab === 'overview' && (
           <>
             {/* Action row */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => { setDateRange('today'); setRepKnocks({}); setExpandedRep(null); }}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                style={dateRange === 'today'
-                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
-                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
-                }
-              >Today</button>
-              <button
-                onClick={() => { setDateRange('week'); setRepKnocks({}); setExpandedRep(null); }}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                style={dateRange === 'week'
-                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
-                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
-                }
-              >Week</button>
-              <button
-                onClick={() => { setDateRange('month'); setRepKnocks({}); setExpandedRep(null); }}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                style={dateRange === 'month'
-                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
-                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
-                }
-              >Month</button>
+            <div className="flex gap-2 mb-4 p-1 rounded-xl bg-white shadow-sm" style={{ border: '1px solid var(--kt-line)' }}>
+              {[['today','Today'],['week','Week'],['month','Month']].map(([r, label]) => (
+                <button
+                  key={r}
+                  onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95"
+                  style={dateRange === r
+                    ? { backgroundColor: 'var(--kt-red)', color: 'white', boxShadow: '0 1px 4px rgba(225,29,58,0.25)' }
+                    : { color: 'var(--kt-muted)', background: 'transparent' }
+                  }
+                >{label}</button>
+              ))}
             </div>
 
             {/* Summary stats */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
                 { label: 'Knocks', value: stats?.total_knocks ?? '—' },
-                { label: 'Leads', value: stats?.total_leads ?? '—' },
+                { label: 'Leads', value: stats?.total_leads ?? '—', accent: true },
                 { label: 'Active Reps', value: stats?.active_reps ?? '—' },
                 { label: 'Conv. Rate', value: stats ? `${stats.conversion_rate}%` : '—' },
               ].map(card => (
-                <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid var(--kt-line)' }}>
-                  <div className="text-2xl font-bold" style={{ color: 'var(--kt-ink)' }}>{card.value}</div>
-                  <div className="text-xs mt-1" style={{ color: 'var(--kt-muted)' }}>{card.label}</div>
+                <div key={card.label} className="bg-white rounded-2xl p-4 shadow-sm" style={{ border: '1px solid var(--kt-line)' }}>
+                  <div style={{ fontFamily: 'var(--kt-font-display)', fontSize: '34px', fontWeight: 700, lineHeight: 1, color: card.accent ? 'var(--kt-red)' : 'var(--kt-ink)', letterSpacing: '-0.02em' }}>{card.value}</div>
+                  <div className="text-xs font-medium mt-2 uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>{card.label}</div>
                 </div>
               ))}
             </div>

@@ -459,7 +459,7 @@ export default function RepTool() {
 
       {/* Counter card */}
       <div className="absolute left-4 right-4 z-10 bottom-24">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-md border border-stone-200/50 grid grid-cols-4">
+        <div className="rounded-2xl shadow-lg grid grid-cols-4 overflow-hidden" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(229,232,237,0.8)' }}>
           {[
             { key: 'knocks', label: 'Knocks' },
             { key: 'talks', label: 'Talks' },
@@ -470,13 +470,12 @@ export default function RepTool() {
               key={key}
               onClick={() => setDetailKey(key)}
               className={[
-                'flex flex-col items-center py-3 active:bg-stone-50 transition-colors',
-                idx === 0 ? 'rounded-l-2xl' : '',
-                idx === arr.length - 1 ? 'rounded-r-2xl' : 'border-r border-stone-200/60',
+                'flex flex-col items-center py-3.5 transition-all active:scale-95 active:bg-stone-50',
+                idx < arr.length - 1 ? 'border-r border-stone-200/60' : '',
               ].join(' ')}
             >
-              <span className="text-2xl font-bold text-stone-900 tabular-nums leading-none">{counts[key]}</span>
-              <span className="text-[10px] text-stone-400 uppercase tracking-wider mt-1">{label}</span>
+              <span className="tabular-nums leading-none" style={{ fontFamily: 'var(--kt-font-display)', fontSize: '26px', fontWeight: 700, color: 'var(--kt-ink)', letterSpacing: '-0.02em' }}>{counts[key]}</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider mt-1.5" style={{ color: 'var(--kt-muted)' }}>{label}</span>
             </button>
           ))}
         </div>
