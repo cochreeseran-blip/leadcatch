@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { useAuth } from './context/AuthContext.jsx';
-import { ProtectedRoute, RoleRoute } from './components/ProtectedRoute.jsx';
+import { RoleRoute } from './components/ProtectedRoute.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AcceptInvite from './pages/AcceptInvite.jsx';
