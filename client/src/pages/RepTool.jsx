@@ -342,8 +342,8 @@ export default function RepTool() {
           zoomControl={false}
         >
           <TileLayer
-            attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
           {mapTarget && <MapFlyTo target={mapTarget} />}
           <FollowDot pos={userPos} />
