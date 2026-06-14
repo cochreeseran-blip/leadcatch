@@ -234,9 +234,13 @@ export default function ManagerDashboard() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--kt-mist)' }}>
       {/* Header */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--kt-line)' }}>
-        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
-        <button onClick={logout} className="text-sm font-medium px-3 py-1.5 rounded-lg" style={{ color: 'var(--kt-muted)', border: '1px solid var(--kt-line)' }}>Logout</button>
+      <div className="bg-white px-4 py-2.5 flex items-center justify-between shadow-sm">
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '20px' }} />
+        <button
+          onClick={logout}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95"
+          style={{ color: 'var(--kt-muted)', border: '1px solid var(--kt-line)' }}
+        >Logout</button>
       </div>
 
       {/* Tab navigation */}
@@ -246,7 +250,7 @@ export default function ManagerDashboard() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+              className="flex-1 py-3 text-sm font-semibold border-b-2 transition-all active:bg-stone-50"
               style={activeTab === tab.key
                 ? { borderColor: 'var(--kt-red)', color: 'var(--kt-red)' }
                 : { borderColor: 'transparent', color: 'var(--kt-muted)' }

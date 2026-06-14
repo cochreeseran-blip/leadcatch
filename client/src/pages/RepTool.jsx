@@ -377,15 +377,15 @@ export default function RepTool() {
       </div>
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur-md" style={{ borderBottom: '1px solid var(--kt-line)' }}>
-        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2.5" style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderBottom: '1px solid rgba(229,232,237,0.7)' }}>
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '20px' }} />
         <button
           onClick={() => setMenuOpen(true)}
-          className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors active:bg-stone-100"
+          className="w-9 h-9 flex items-center justify-center rounded-lg transition-all active:scale-95 active:bg-stone-100"
           style={{ color: 'var(--kt-navy)' }}
           aria-label="Menu"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <line x1="4" y1="7" x2="20" y2="7" />
             <line x1="4" y1="12" x2="20" y2="12" />
             <line x1="4" y1="17" x2="20" y2="17" />
