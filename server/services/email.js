@@ -1,9 +1,8 @@
 import { Resend } from 'resend';
 
-// ⚠️  FLAG: Update FROM to a verified sending domain once DNS is configured in Resend.
-// e.g. 'KnockTrakr <noreply@mail.useleadcatch.com>'
-// Until then, onboarding@resend.dev works but lands in spam on Gmail/Outlook.
-const FROM = 'KnockTrakr <onboarding@resend.dev>';
+// ⚠️  FLAG: Add mail.knocktrakr.com as a verified sending domain in Resend (DNS TXT record),
+// then this FROM address will work and emails will land in inbox instead of spam.
+const FROM = 'KnockTrakr <noreply@mail.knocktrakr.com>';
 
 const NAVY  = '#0A2540';
 const RED   = '#C8102E';
@@ -59,7 +58,7 @@ function buildLeadHtml({ repName, companyName, address, homeownerName, phone, ou
         </tr>
       </table>
     </div>
-    <p style="color:${MUTED};font-size:11px;text-align:center;margin-top:20px;">Sent by KnockTrakr · LeadCatch Solutions · <a href="https://www.useleadcatch.com" style="color:${MUTED};">useleadcatch.com</a></p>
+    <p style="color:${MUTED};font-size:11px;text-align:center;margin-top:20px;">Sent by KnockTrakr · LeadCatch Solutions · <a href="https://knocktrakr.com" style="color:${MUTED};">knocktrakr.com</a></p>
   </div>
 </body>
 </html>`;
@@ -84,7 +83,7 @@ function buildLeadText({ repName, companyName, address, homeownerName, phone, ou
     ``,
     `--`,
     `KnockTrakr · LeadCatch Solutions`,
-    `https://www.useleadcatch.com`,
+    `https://knocktrakr.com`,
   ].filter(l => l !== null).join('\n');
 }
 
@@ -112,7 +111,7 @@ function buildInviteHtml({ firstName, companyName, username, inviteUrl }) {
         This link expires in 48 hours. If you didn't expect this invitation, you can safely ignore this email.
       </p>
     </div>
-    <p style="color:${MUTED};font-size:11px;text-align:center;margin-top:20px;">KnockTrakr · LeadCatch Solutions · <a href="https://www.useleadcatch.com" style="color:${MUTED};">useleadcatch.com</a></p>
+    <p style="color:${MUTED};font-size:11px;text-align:center;margin-top:20px;">KnockTrakr · LeadCatch Solutions · <a href="https://knocktrakr.com" style="color:${MUTED};">knocktrakr.com</a></p>
   </div>
 </body>
 </html>`;
@@ -135,7 +134,7 @@ function buildInviteText({ firstName, companyName, username, inviteUrl }) {
     ``,
     `--`,
     `KnockTrakr · LeadCatch Solutions`,
-    `https://www.useleadcatch.com`,
+    `https://knocktrakr.com`,
   ].join('\n');
 }
 

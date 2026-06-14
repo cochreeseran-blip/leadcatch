@@ -350,7 +350,7 @@ export default function AdminPanel() {
             {createdManagerCreds && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 font-mono text-sm">
                 <div className="text-green-800 font-semibold mb-1">Manager Created</div>
-                <div>URL: useleadcatch.com/login</div>
+                <div>URL: app.knocktrakr.com/login</div>
                 <div>Username: {createdManagerCreds.username}</div>
                 <div>Password: {createdManagerCreds.password}</div>
               </div>
@@ -390,7 +390,7 @@ export default function AdminPanel() {
             {createdRepCreds && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 font-mono text-sm">
                 <div className="text-green-800 font-semibold mb-1">Rep Created</div>
-                <div>URL: useleadcatch.com/login</div>
+                <div>URL: app.knocktrakr.com/login</div>
                 <div>Username: {createdRepCreds.username}</div>
                 <div>Password: {createdRepCreds.password}</div>
               </div>
