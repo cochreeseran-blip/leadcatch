@@ -248,7 +248,7 @@ export default function ManagerDashboard() {
       {/* Tab navigation */}
       <div className="bg-white border-b border-stone-200 px-6">
         <div className="flex gap-1 max-w-6xl mx-auto">
-          {[{ key: 'overview', label: 'Overview' }, { key: 'neighborhoods', label: 'Neighborhoods' }].map(tab => (
+          {[{ key: 'overview', label: 'Overview' }, { key: 'leaderboard', label: 'Leaderboard' }, { key: 'neighborhoods', label: 'Neighborhoods' }].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -424,6 +424,87 @@ export default function ManagerDashboard() {
             </div>
           </>
         )}
+
+        {/* ══ LEADERBOARD TAB ══ */}
+        {activeTab === 'leaderboard' && (() => {
+          const ranked = [...reps]
+            .filter(r => !r.invite_pending)
+            .sort((a, b) => b.leads_count - a.leads_count || b.knocks_count - a.knocks_count);
+
+          const medal = ['🥇', '🥈', '🥉'];
+
+          return (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
+                  Leaderboard
+                </h1>
+                <div className="flex gap-2">
+                  {['today', 'week', 'month'].map(r => (
+                    <button
+                      key={r}
+                      onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition"
+                      style={dateRange === r
+                        ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                        : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
+                      }
+                    >
+                      {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : 'This Month'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {ranked.length === 0 ? (
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-16 text-center">
+                  <p className="text-stone-400">No activity yet for this period.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {ranked.map((rep, i) => (
+                    <div
+                      key={rep.rep_id}
+                      className="bg-white rounded-xl shadow-sm flex items-center gap-5 px-6 py-5"
+                      style={{
+                        border: i === 0 ? '1.5px solid var(--kt-red)' : '1px solid var(--kt-line)',
+                      }}
+                    >
+                      {/* Rank */}
+                      <div className="text-2xl w-8 text-center flex-shrink-0">
+                        {i < 3 ? medal[i] : <span className="text-base font-bold" style={{ color: 'var(--kt-muted)' }}>#{i + 1}</span>}
+                      </div>
+
+                      {/* Name */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-base truncate" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
+                          {rep.name || rep.username}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>@{rep.username}</div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex gap-6 text-center flex-shrink-0">
+                        <div>
+                          <div className="text-xl font-bold" style={{ color: 'var(--kt-ink)' }}>{rep.knocks_count}</div>
+                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Knocks</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold" style={{ color: 'var(--kt-red)' }}>{rep.leads_count}</div>
+                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Leads</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold" style={{ color: 'var(--kt-ink)' }}>{rep.conversion_rate}%</div>
+                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Conv.</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* ══ NEIGHBORHOODS TAB ══ */}
         {activeTab === 'neighborhoods' && (
