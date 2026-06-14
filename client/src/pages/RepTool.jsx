@@ -381,7 +381,7 @@ export default function RepTool() {
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2.5" style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderBottom: '1px solid rgba(229,232,237,0.7)' }}>
-        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '20px' }} />
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
         <button
           onClick={() => setMenuOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-lg transition-all active:scale-95 active:bg-stone-100"

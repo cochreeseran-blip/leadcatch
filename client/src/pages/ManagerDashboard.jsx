@@ -235,7 +235,7 @@ export default function ManagerDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--kt-mist)' }}>
       {/* Header */}
       <div className="bg-white px-4 py-2.5 flex items-center justify-between shadow-sm">
-        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '20px' }} />
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
         <button
           onClick={logout}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all active:scale-95"
