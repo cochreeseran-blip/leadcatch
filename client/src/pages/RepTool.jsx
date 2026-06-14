@@ -404,7 +404,7 @@ export default function RepTool() {
         style={{ transform: menuOpen ? 'translateY(0)' : 'translateY(100%)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--kt-line)' }} />
+          <div className="sheet-handle" />
         </div>
         <div className="px-4 pb-4 space-y-2">
           <button
@@ -485,8 +485,8 @@ export default function RepTool() {
       <div className="absolute left-4 right-4 z-10 bottom-6">
         <button
           onClick={() => setLogOpen(true)}
-          className="w-full py-4 rounded-2xl text-white font-semibold text-base bg-accent shadow-lg active:scale-[0.98] transition-transform"
-          style={{ minHeight: '56px' }}
+          className="w-full py-4 rounded-2xl text-white font-bold text-base transition-all active:scale-[0.97]"
+          style={{ minHeight: '56px', background: 'var(--kt-red)', boxShadow: '0 4px 20px rgba(225,29,58,0.35), 0 1px 3px rgba(0,0,0,0.12)' }}
         >
           Log Knock
         </button>
@@ -501,11 +501,11 @@ export default function RepTool() {
 
       {/* ── Log Knock sheet ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ transform: logOpen ? 'translateY(0)' : 'translateY(110%)' }}
       >
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+          <div className="sheet-handle" />
         </div>
 
         {!showLeadForm ? (
@@ -554,14 +554,14 @@ export default function RepTool() {
               <button
                 onClick={handleNoAnswer}
                 disabled={!address}
-                className="py-4 rounded-xl bg-stone-100 text-stone-700 font-semibold text-sm active:bg-stone-200 disabled:opacity-40 transition-opacity"
+                className="py-4 rounded-xl bg-stone-100 text-stone-700 font-semibold text-sm transition-all active:scale-[0.97] active:bg-stone-200 disabled:opacity-40"
                 style={{ minHeight: '56px' }}
               >No Answer</button>
               <button
                 onClick={() => setShowLeadForm(true)}
                 disabled={!address}
-                className="py-4 rounded-xl text-white font-semibold text-sm bg-accent active:opacity-80 disabled:opacity-40 transition-opacity"
-                style={{ minHeight: '56px' }}
+                className="py-4 rounded-xl text-white font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-40"
+                style={{ minHeight: '56px', background: 'var(--kt-red)', boxShadow: '0 2px 10px rgba(225,29,58,0.25)' }}
               >Answered ›</button>
             </div>
 
@@ -632,8 +632,8 @@ export default function RepTool() {
             <button
               onClick={handleSaveLead}
               disabled={saving || !form.homeownerName || !form.outcome}
-              className="w-full py-4 rounded-xl text-white font-bold text-base bg-accent active:opacity-80 disabled:opacity-40 transition-opacity"
-              style={{ minHeight: '56px' }}
+              className="w-full py-4 rounded-xl text-white font-bold text-base transition-all active:scale-[0.97] disabled:opacity-40"
+              style={{ minHeight: '56px', background: 'var(--kt-red)', boxShadow: '0 2px 10px rgba(225,29,58,0.25)' }}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -643,11 +643,11 @@ export default function RepTool() {
 
       {/* ── Counter detail sheet ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ transform: detailKey ? 'translateY(0)' : 'translateY(110%)', maxHeight: '75vh' }}
       >
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+          <div className="sheet-handle" />
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
           <h2 className="text-base font-bold text-stone-900">
@@ -678,11 +678,11 @@ export default function RepTool() {
 
       {/* ── Neighborhoods sheet ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ transform: neighborhoodsOpen ? 'translateY(0)' : 'translateY(110%)', maxHeight: '75vh' }}
       >
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+          <div className="sheet-handle" />
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
           <h2 className="text-base font-bold text-stone-900">
@@ -727,11 +727,11 @@ export default function RepTool() {
 
       {/* ── Leaderboard sheet ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl transition-transform duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ transform: leaderboardOpen ? 'translateY(0)' : 'translateY(110%)', maxHeight: '80vh' }}
       >
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-1 bg-stone-300 rounded-full" />
+          <div className="sheet-handle" />
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100">
           <h2 className="text-base font-bold" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
