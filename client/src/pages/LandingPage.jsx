@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.role === 'superadmin') navigate('/admin', { replace: true });
+      else if (user.role === 'manager') navigate('/knocktrakr/manager', { replace: true });
+      else navigate('/knocktrakr/rep', { replace: true });
+    }
+  }, [user, loading]);
 
   return (
     <div style={{ fontFamily: 'var(--kt-font-body)' }}>
