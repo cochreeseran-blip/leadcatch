@@ -234,30 +234,23 @@ export default function ManagerDashboard() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--kt-mist)' }}>
       {/* Header */}
-      <div className="bg-white px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--kt-line)' }}>
-        <div>
-          <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '24px' }} />
-          <span className="ml-3 text-sm" style={{ color: 'var(--kt-muted)' }}>Manager Dashboard</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-stone-600 text-sm">{user?.firstName} {user?.lastName}</span>
-          <button onClick={logout} className="text-sm text-stone-500 border border-stone-300 rounded-lg px-3 py-1">Logout</button>
-        </div>
+      <div className="bg-white px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--kt-line)' }}>
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
+        <button onClick={logout} className="text-sm font-medium px-3 py-1.5 rounded-lg" style={{ color: 'var(--kt-muted)', border: '1px solid var(--kt-line)' }}>Logout</button>
       </div>
 
       {/* Tab navigation */}
-      <div className="bg-white border-b border-stone-200 px-6">
-        <div className="flex gap-1 max-w-6xl mx-auto">
+      <div className="bg-white" style={{ borderBottom: '1px solid var(--kt-line)' }}>
+        <div className="flex">
           {[{ key: 'overview', label: 'Overview' }, { key: 'leaderboard', label: 'Leaderboard' }, { key: 'neighborhoods', label: 'Neighborhoods' }].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={[
-                'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
-                activeTab === tab.key
-                  ? 'border-kt-red text-kt-red'
-                  : 'border-transparent text-stone-500 hover:text-stone-700',
-              ].join(' ')}
+              className="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
+              style={activeTab === tab.key
+                ? { borderColor: 'var(--kt-red)', color: 'var(--kt-red)' }
+                : { borderColor: 'transparent', color: 'var(--kt-muted)' }
+              }
             >
               {tab.label}
             </button>
@@ -265,163 +258,184 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="px-4 py-4 max-w-2xl mx-auto">
 
         {/* ══ OVERVIEW TAB ══ */}
         {activeTab === 'overview' && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-stone-800">Team Overview</h1>
-              <div className="flex gap-2">
-                <button
-                  onClick={exportCSV}
-                  className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 text-sm font-medium hover:bg-stone-50"
-                >
-                  Export CSV
-                </button>
-                <button
-                  onClick={() => { setShowInviteForm(true); setInviteResult(null); }}
-                  className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
-                  style={{ backgroundColor: 'var(--kt-red)' }}
-                >
-                  + Invite Rep
-                </button>
-              </div>
+            {/* Action row */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => { setDateRange('today'); setRepKnocks({}); setExpandedRep(null); }}
+                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                style={dateRange === 'today'
+                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
+                }
+              >Today</button>
+              <button
+                onClick={() => { setDateRange('week'); setRepKnocks({}); setExpandedRep(null); }}
+                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                style={dateRange === 'week'
+                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
+                }
+              >Week</button>
+              <button
+                onClick={() => { setDateRange('month'); setRepKnocks({}); setExpandedRep(null); }}
+                className="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                style={dateRange === 'month'
+                  ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                  : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
+                }
+              >Month</button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
               {[
-                { label: 'Total Knocks', value: stats?.total_knocks ?? '—' },
-                { label: 'Total Leads', value: stats?.total_leads ?? '—' },
+                { label: 'Knocks', value: stats?.total_knocks ?? '—' },
+                { label: 'Leads', value: stats?.total_leads ?? '—' },
                 { label: 'Active Reps', value: stats?.active_reps ?? '—' },
-                { label: 'Conversion Rate', value: stats ? `${stats.conversion_rate}%` : '—' },
+                { label: 'Conv. Rate', value: stats ? `${stats.conversion_rate}%` : '—' },
               ].map(card => (
-                <div key={card.label} className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
-                  <div className="text-3xl font-bold text-stone-800">{card.value}</div>
-                  <div className="text-stone-500 text-sm mt-1">{card.label}</div>
+                <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid var(--kt-line)' }}>
+                  <div className="text-2xl font-bold" style={{ color: 'var(--kt-ink)' }}>{card.value}</div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--kt-muted)' }}>{card.label}</div>
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-2 mb-6">
-              {['today', 'week', 'month'].map(r => (
-                <button
-                  key={r}
-                  onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition"
-                  style={dateRange === r
-                    ? { backgroundColor: 'var(--kt-red)', color: 'white' }
-                    : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
-                  }
-                >
-                  {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : 'This Month'}
-                </button>
-              ))}
+            {/* Top actions */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={exportCSV}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                style={{ border: '1px solid var(--kt-line)', color: 'var(--kt-text)', background: 'white' }}
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => { setShowInviteForm(true); setInviteResult(null); }}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition"
+                style={{ backgroundColor: 'var(--kt-red)' }}
+              >
+                + Invite Rep
+              </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-stone-100">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Rep Name</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Knocks</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Leads</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Conv%</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide hidden md:table-cell">Last Active</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reps.length === 0 && (
-                    <tr><td colSpan={6} className="text-center py-8 text-stone-400">No reps yet — invite your first one above</td></tr>
-                  )}
-                  {reps.map(rep => (
-                    <React.Fragment key={rep.rep_id}>
-                      <tr className="border-b border-stone-100 hover:bg-stone-50">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-stone-800">{rep.name || rep.username}</span>
-                            {rep.invite_pending && (
-                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending Setup</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-stone-400">@{rep.username}</div>
-                        </td>
-                        <td className="px-4 py-4 text-center text-stone-700">{rep.knocks_count}</td>
-                        <td className="px-4 py-4 text-center font-semibold" style={{ color: 'var(--kt-red)' }}>{rep.leads_count}</td>
-                        <td className="px-4 py-4 text-center text-stone-700">{rep.conversion_rate}%</td>
-                        <td className="px-4 py-4 text-stone-500 text-sm hidden md:table-cell">
-                          {rep.last_active ? new Date(rep.last_active).toLocaleString() : '—'}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center gap-3">
-                            {rep.invite_pending ? (
-                              <div className="flex flex-col items-center gap-1">
-                                <button
-                                  onClick={() => resendInvite(rep.rep_id)}
-                                  disabled={resendingId === rep.rep_id}
-                                  className="text-sm text-blue-600 hover:underline disabled:opacity-50"
-                                >
-                                  {resendingId === rep.rep_id ? 'Sending…' : 'Resend Invite'}
-                                </button>
-                                {resendResult[rep.rep_id] && (
-                                  <span className="text-xs text-green-600">
-                                    {resendResult[rep.rep_id].emailSent ? 'Sent!' : 'Link generated'}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <button onClick={() => toggleRep(rep.rep_id)} className="text-sm text-blue-600 hover:underline">
-                                {expandedRep === rep.rep_id ? 'Hide' : 'View'}
-                              </button>
-                            )}
-                            <button onClick={() => removeRep(rep.rep_id, rep.name || rep.username)} className="text-sm text-red-500 hover:underline">
-                              Remove
+            {/* Rep cards */}
+            {reps.length === 0 ? (
+              <div className="bg-white rounded-xl p-10 text-center" style={{ border: '1px solid var(--kt-line)' }}>
+                <p style={{ color: 'var(--kt-muted)' }}>No reps yet — invite your first one above</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reps.map(rep => (
+                  <div key={rep.rep_id} className="bg-white rounded-xl overflow-hidden" style={{ border: '1px solid var(--kt-line)' }}>
+                    {/* Rep header row */}
+                    <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm flex items-center gap-2 flex-wrap" style={{ color: 'var(--kt-ink)' }}>
+                          {rep.name || rep.username}
+                          {rep.invite_pending && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending Setup</span>
+                          )}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>
+                          @{rep.username}
+                          {rep.last_active && !rep.invite_pending && (
+                            <span className="ml-2">· {new Date(rep.last_active).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        {rep.invite_pending ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <button
+                              onClick={() => resendInvite(rep.rep_id)}
+                              disabled={resendingId === rep.rep_id}
+                              className="text-xs font-medium px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                              style={{ color: 'var(--kt-navy)', border: '1px solid var(--kt-line)' }}
+                            >
+                              {resendingId === rep.rep_id ? 'Sending…' : 'Resend'}
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {expandedRep === rep.rep_id && !rep.invite_pending && (
-                        <tr>
-                          <td colSpan={6} className="bg-stone-50 px-6 py-4">
-                            {!repKnocks[rep.rep_id] ? (
-                              <div className="text-stone-400 text-sm">Loading...</div>
-                            ) : repKnocks[rep.rep_id].length === 0 ? (
-                              <div className="text-stone-400 text-sm">No knocks in this period.</div>
-                            ) : (
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="text-stone-500">
-                                    <th className="text-left py-1 pr-4">Address</th>
-                                    <th className="text-left py-1 pr-4">Time</th>
-                                    <th className="text-left py-1 pr-4">Outcome</th>
-                                    <th className="text-left py-1">Notes</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {repKnocks[rep.rep_id].map(k => (
-                                    <tr key={k.id} className="border-t border-stone-200">
-                                      <td className="py-2 pr-4 text-stone-700">{k.address || '—'}</td>
-                                      <td className="py-2 pr-4 text-stone-500">{new Date(k.created_at).toLocaleTimeString()}</td>
-                                      <td className="py-2 pr-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${OUTCOME_COLORS[k.outcome] || 'bg-stone-100 text-stone-600'}`}>
-                                          {OUTCOME_LABELS[k.outcome] || k.outcome}
-                                        </span>
-                                      </td>
-                                      <td className="py-2 text-stone-500">{k.notes || '—'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                            {resendResult[rep.rep_id] && (
+                              <span className="text-xs text-green-600">
+                                {resendResult[rep.rep_id].emailSent ? 'Sent!' : 'Link ready'}
+                              </span>
                             )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => toggleRep(rep.rep_id)}
+                            className="text-xs font-medium px-3 py-1.5 rounded-lg transition"
+                            style={{ color: 'var(--kt-navy)', border: '1px solid var(--kt-line)' }}
+                          >
+                            {expandedRep === rep.rep_id ? 'Hide' : 'Details'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => removeRep(rep.rep_id, rep.name || rep.username)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg transition"
+                          style={{ color: 'var(--kt-red)', border: '1px solid rgba(225,29,58,0.25)' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stats mini-grid */}
+                    {!rep.invite_pending && (
+                      <div className="grid grid-cols-3 border-t" style={{ borderColor: 'var(--kt-line)' }}>
+                        {[
+                          { label: 'Knocks', value: rep.knocks_count },
+                          { label: 'Leads', value: rep.leads_count, accent: true },
+                          { label: 'Conv%', value: `${rep.conversion_rate}%` },
+                        ].map((s, i, arr) => (
+                          <div
+                            key={s.label}
+                            className="py-3 text-center"
+                            style={{ borderRight: i < arr.length - 1 ? `1px solid var(--kt-line)` : undefined }}
+                          >
+                            <div className="text-lg font-bold" style={{ color: s.accent ? 'var(--kt-red)' : 'var(--kt-ink)' }}>{s.value}</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Expanded knock list */}
+                    {expandedRep === rep.rep_id && !rep.invite_pending && (
+                      <div className="border-t px-4 py-3" style={{ borderColor: 'var(--kt-line)', background: 'var(--kt-mist)' }}>
+                        {!repKnocks[rep.rep_id] ? (
+                          <p className="text-sm text-center py-2" style={{ color: 'var(--kt-muted)' }}>Loading…</p>
+                        ) : repKnocks[rep.rep_id].length === 0 ? (
+                          <p className="text-sm text-center py-2" style={{ color: 'var(--kt-muted)' }}>No knocks in this period.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {repKnocks[rep.rep_id].map(k => (
+                              <div key={k.id} className="bg-white rounded-lg px-3 py-2.5" style={{ border: '1px solid var(--kt-line)' }}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium truncate" style={{ color: 'var(--kt-ink)' }}>{k.address || '—'}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${OUTCOME_COLORS[k.outcome] || 'bg-stone-100 text-stone-600'}`}>
+                                    {OUTCOME_LABELS[k.outcome] || k.outcome}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-xs" style={{ color: 'var(--kt-muted)' }}>{new Date(k.created_at).toLocaleTimeString()}</span>
+                                  {k.notes && <span className="text-xs truncate" style={{ color: 'var(--kt-muted)' }}>{k.notes}</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -435,68 +449,60 @@ export default function ManagerDashboard() {
 
           return (
             <>
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
-                  Leaderboard
-                </h1>
-                <div className="flex gap-2">
-                  {['today', 'week', 'month'].map(r => (
-                    <button
-                      key={r}
-                      onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style={dateRange === r
-                        ? { backgroundColor: 'var(--kt-red)', color: 'white' }
-                        : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
-                      }
-                    >
-                      {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : 'This Month'}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-2 mb-4">
+                {['today', 'week', 'month'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                    style={dateRange === r
+                      ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                      : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
+                    }
+                  >
+                    {r === 'today' ? 'Today' : r === 'week' ? 'Week' : 'Month'}
+                  </button>
+                ))}
               </div>
 
               {ranked.length === 0 ? (
-                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-16 text-center">
-                  <p className="text-stone-400">No activity yet for this period.</p>
+                <div className="bg-white rounded-xl p-12 text-center" style={{ border: '1px solid var(--kt-line)' }}>
+                  <p style={{ color: 'var(--kt-muted)' }}>No activity yet for this period.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {ranked.map((rep, i) => (
                     <div
                       key={rep.rep_id}
-                      className="bg-white rounded-xl shadow-sm flex items-center gap-5 px-6 py-5"
-                      style={{
-                        border: i === 0 ? '1.5px solid var(--kt-red)' : '1px solid var(--kt-line)',
-                      }}
+                      className="bg-white rounded-xl overflow-hidden"
+                      style={{ border: i === 0 ? '1.5px solid var(--kt-red)' : '1px solid var(--kt-line)' }}
                     >
-                      {/* Rank */}
-                      <div className="text-2xl w-8 text-center flex-shrink-0">
-                        {i < 3 ? medal[i] : <span className="text-base font-bold" style={{ color: 'var(--kt-muted)' }}>#{i + 1}</span>}
+                      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                        <div className="text-2xl w-8 text-center flex-shrink-0">
+                          {i < 3 ? medal[i] : <span className="text-base font-bold" style={{ color: 'var(--kt-muted)' }}>#{i + 1}</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm truncate" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
+                            {rep.name || rep.username}
+                          </div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>@{rep.username}</div>
+                        </div>
                       </div>
-
-                      {/* Name */}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-base truncate" style={{ fontFamily: 'var(--kt-font-display)', color: 'var(--kt-ink)' }}>
-                          {rep.name || rep.username}
-                        </div>
-                        <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>@{rep.username}</div>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="flex gap-6 text-center flex-shrink-0">
-                        <div>
-                          <div className="text-xl font-bold" style={{ color: 'var(--kt-ink)' }}>{rep.knocks_count}</div>
-                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Knocks</div>
-                        </div>
-                        <div>
-                          <div className="text-xl font-bold" style={{ color: 'var(--kt-red)' }}>{rep.leads_count}</div>
-                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Leads</div>
-                        </div>
-                        <div>
-                          <div className="text-xl font-bold" style={{ color: 'var(--kt-ink)' }}>{rep.conversion_rate}%</div>
-                          <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--kt-muted)' }}>Conv.</div>
-                        </div>
+                      <div className="grid grid-cols-3 border-t" style={{ borderColor: 'var(--kt-line)' }}>
+                        {[
+                          { label: 'Knocks', value: rep.knocks_count },
+                          { label: 'Leads', value: rep.leads_count, accent: true },
+                          { label: 'Conv%', value: `${rep.conversion_rate}%` },
+                        ].map((s, idx, arr) => (
+                          <div
+                            key={s.label}
+                            className="py-3 text-center"
+                            style={{ borderRight: idx < arr.length - 1 ? `1px solid var(--kt-line)` : undefined }}
+                          >
+                            <div className="text-lg font-bold" style={{ color: s.accent ? 'var(--kt-red)' : 'var(--kt-ink)' }}>{s.value}</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>{s.label}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -509,14 +515,14 @@ export default function ManagerDashboard() {
         {/* ══ NEIGHBORHOODS TAB ══ */}
         {activeTab === 'neighborhoods' && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-stone-800">Neighborhoods</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-lg font-bold" style={{ color: 'var(--kt-ink)', fontFamily: 'var(--kt-font-display)' }}>Neighborhoods</h1>
               <button
                 onClick={openCreateNh}
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                className="px-4 py-2 rounded-xl text-white text-sm font-semibold"
                 style={{ backgroundColor: 'var(--kt-red)' }}
               >
-                + Add Neighborhood
+                + Add
               </button>
             </div>
 

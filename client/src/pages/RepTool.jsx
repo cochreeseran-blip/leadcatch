@@ -103,6 +103,7 @@ export default function RepTool() {
   const [neighborhoodsOpen, setNeighborhoodsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({ homeownerName: '', phone: '', outcome: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -295,7 +296,7 @@ export default function RepTool() {
 
   const detailLabels = { knocks: 'Knocks', talks: 'Talks', walks: 'Walks', appointments: 'Appointments' };
 
-  const anySheetOpen = logOpen || !!detailKey || neighborhoodsOpen || leaderboardOpen;
+  const anySheetOpen = logOpen || !!detailKey || neighborhoodsOpen || leaderboardOpen || menuOpen;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-stone-100">
@@ -354,27 +355,80 @@ export default function RepTool() {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur-md" style={{ borderBottom: '1px solid var(--kt-line)' }}>
         <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors active:bg-stone-100"
+          style={{ color: 'var(--kt-navy)' }}
+          aria-label="Menu"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Menu bottom sheet */}
+      <div
+        className="fixed inset-0 z-40 transition-opacity duration-200"
+        style={{ backgroundColor: 'rgba(0,0,0,0.45)', opacity: menuOpen ? 1 : 0, pointerEvents: menuOpen ? 'auto' : 'none' }}
+        onClick={() => setMenuOpen(false)}
+      />
+      <div
+        className="fixed left-0 right-0 bottom-0 z-50 bg-white rounded-t-2xl transition-transform duration-300"
+        style={{ transform: menuOpen ? 'translateY(0)' : 'translateY(100%)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--kt-line)' }} />
+        </div>
+        <div className="px-4 pb-4 space-y-2">
           <button
-            onClick={() => { setLeaderboardOpen(true); fetchLeaderboard(); }}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-            style={{ color: 'var(--kt-red)', background: 'rgba(225,29,58,0.08)' }}
+            onClick={() => { setMenuOpen(false); setLeaderboardOpen(true); fetchLeaderboard(); }}
+            className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-colors active:bg-stone-50"
+            style={{ border: '1px solid var(--kt-line)' }}
           >
-            Leaderboard
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(225,29,58,0.09)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--kt-red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-semibold text-sm" style={{ color: 'var(--kt-ink)' }}>Leaderboard</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>See where you rank on the team</div>
+            </div>
           </button>
           <button
-            onClick={() => setNeighborhoodsOpen(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-            style={{ color: 'var(--kt-navy)', background: 'rgba(10,37,64,0.07)' }}
+            onClick={() => { setMenuOpen(false); setNeighborhoodsOpen(true); }}
+            className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-colors active:bg-stone-50"
+            style={{ border: '1px solid var(--kt-line)' }}
           >
-            Neighborhoods
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(10,37,64,0.07)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--kt-navy)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-semibold text-sm" style={{ color: 'var(--kt-ink)' }}>Neighborhoods</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--kt-muted)' }}>Jump to an assigned area on the map</div>
+            </div>
           </button>
           <button
-            onClick={logout}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-            style={{ color: 'var(--kt-muted)', border: '1px solid var(--kt-line)' }}
+            onClick={() => { setMenuOpen(false); logout(); }}
+            className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-colors active:bg-stone-50"
+            style={{ border: '1px solid var(--kt-line)' }}
           >
-            Logout
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,0,0,0.04)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--kt-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-semibold text-sm" style={{ color: 'var(--kt-muted)' }}>Log Out</div>
+            </div>
           </button>
         </div>
       </div>
