@@ -232,12 +232,12 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f9fafb' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--kt-mist)' }}>
       {/* Header */}
-      <div className="border-b border-stone-200 bg-white px-6 py-4 flex items-center justify-between">
+      <div className="bg-white px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--kt-line)' }}>
         <div>
-          <span className="text-xl font-bold" style={{ color: '#ea580c' }}>KnockTrakr</span>
-          <span className="ml-3 text-stone-500 text-sm">Manager Dashboard</span>
+          <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '24px' }} />
+          <span className="ml-3 text-sm" style={{ color: 'var(--kt-muted)' }}>Manager Dashboard</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-stone-600 text-sm">{user?.firstName} {user?.lastName}</span>
@@ -255,7 +255,7 @@ export default function ManagerDashboard() {
               className={[
                 'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                 activeTab === tab.key
-                  ? 'border-orange-500 text-orange-600'
+                  ? 'border-kt-red text-kt-red'
                   : 'border-transparent text-stone-500 hover:text-stone-700',
               ].join(' ')}
             >
@@ -282,7 +282,7 @@ export default function ManagerDashboard() {
                 <button
                   onClick={() => { setShowInviteForm(true); setInviteResult(null); }}
                   className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
-                  style={{ backgroundColor: '#ea580c' }}
+                  style={{ backgroundColor: 'var(--kt-red)' }}
                 >
                   + Invite Rep
                 </button>
@@ -310,8 +310,8 @@ export default function ManagerDashboard() {
                   onClick={() => { setDateRange(r); setRepKnocks({}); setExpandedRep(null); }}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition"
                   style={dateRange === r
-                    ? { backgroundColor: '#ea580c', color: 'white' }
-                    : { backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db' }
+                    ? { backgroundColor: 'var(--kt-red)', color: 'white' }
+                    : { backgroundColor: 'white', color: 'var(--kt-text)', border: '1px solid var(--kt-line)' }
                   }
                 >
                   {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : 'This Month'}
@@ -348,7 +348,7 @@ export default function ManagerDashboard() {
                           <div className="text-xs text-stone-400">@{rep.username}</div>
                         </td>
                         <td className="px-4 py-4 text-center text-stone-700">{rep.knocks_count}</td>
-                        <td className="px-4 py-4 text-center font-semibold" style={{ color: '#ea580c' }}>{rep.leads_count}</td>
+                        <td className="px-4 py-4 text-center font-semibold" style={{ color: 'var(--kt-red)' }}>{rep.leads_count}</td>
                         <td className="px-4 py-4 text-center text-stone-700">{rep.conversion_rate}%</td>
                         <td className="px-4 py-4 text-stone-500 text-sm hidden md:table-cell">
                           {rep.last_active ? new Date(rep.last_active).toLocaleString() : '—'}
@@ -433,7 +433,7 @@ export default function ManagerDashboard() {
               <button
                 onClick={openCreateNh}
                 className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
-                style={{ backgroundColor: '#ea580c' }}
+                style={{ backgroundColor: 'var(--kt-red)' }}
               >
                 + Add Neighborhood
               </button>
@@ -447,7 +447,7 @@ export default function ManagerDashboard() {
                 <button
                   onClick={openCreateNh}
                   className="px-5 py-2 rounded-lg text-white text-sm font-semibold"
-                  style={{ backgroundColor: '#ea580c' }}
+                  style={{ backgroundColor: 'var(--kt-red)' }}
                 >
                   Add your first neighborhood
                 </button>
@@ -464,7 +464,7 @@ export default function ManagerDashboard() {
                           {(nh.assigned_reps || []).length === 0 ? (
                             <span className="text-xs text-stone-400 italic">No reps assigned</span>
                           ) : (nh.assigned_reps || []).map(r => (
-                            <span key={r.id} className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 font-medium">
+                            <span key={r.id} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium">
                               {r.name || r.username}
                             </span>
                           ))}
@@ -509,7 +509,7 @@ export default function ManagerDashboard() {
                 <button
                   onClick={() => { setShowInviteForm(false); setInviteResult(null); }}
                   className="w-full py-3 rounded-xl text-white font-semibold"
-                  style={{ backgroundColor: '#ea580c' }}
+                  style={{ backgroundColor: 'var(--kt-red)' }}
                 >
                   Done
                 </button>
@@ -520,21 +520,21 @@ export default function ManagerDashboard() {
                   type="text" placeholder="First Name"
                   value={inviteForm.firstName}
                   onChange={e => setInviteForm(f => ({ ...f, firstName: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
+                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-kt-navy"
                   style={{ fontSize: '16px' }}
                 />
                 <input
                   type="text" placeholder="Last Name"
                   value={inviteForm.lastName}
                   onChange={e => setInviteForm(f => ({ ...f, lastName: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
+                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-kt-navy"
                   style={{ fontSize: '16px' }}
                 />
                 <input
                   type="email" placeholder="Email address"
                   value={inviteForm.email}
                   onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500"
+                  className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-kt-navy"
                   style={{ fontSize: '16px' }}
                 />
                 <p className="text-xs text-stone-400">An invite email will be sent with a link to set up their account.</p>
@@ -544,7 +544,7 @@ export default function ManagerDashboard() {
                     onClick={inviteRep}
                     disabled={inviting || !inviteForm.firstName || !inviteForm.lastName || !inviteForm.email}
                     className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60"
-                    style={{ backgroundColor: '#ea580c' }}
+                    style={{ backgroundColor: 'var(--kt-red)' }}
                   >
                     {inviting ? 'Sending…' : 'Send Invite'}
                   </button>
@@ -563,15 +563,15 @@ export default function ManagerDashboard() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Name *</label>
-                <input type="text" placeholder="e.g. Maplewood Estates" value={nhForm.name} onChange={e => setNhForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="e.g. Maplewood Estates" value={nhForm.name} onChange={e => setNhForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Starting Address *</label>
-                <input type="text" placeholder="e.g. 123 Maple St, Springfield, IL" value={nhForm.address} onChange={e => setNhForm(f => ({ ...f, address: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="e.g. 123 Maple St, Springfield, IL" value={nhForm.address} onChange={e => setNhForm(f => ({ ...f, address: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setShowNhForm(false); setEditingNh(null); }} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-                <button onClick={saveNh} disabled={savingNh || !nhForm.name || !nhForm.address} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
+                <button onClick={saveNh} disabled={savingNh || !nhForm.name || !nhForm.address} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>
                   {savingNh ? 'Saving…' : editingNh ? 'Save Changes' : 'Create'}
                 </button>
               </div>
@@ -592,7 +592,7 @@ export default function ManagerDashboard() {
               <div className="space-y-2 max-h-72 overflow-y-auto mb-4">
                 {allReps.filter(r => !r.invite_pending).map(rep => (
                   <label key={rep.rep_id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-stone-50 cursor-pointer transition-colors">
-                    <input type="checkbox" checked={assignSelected.includes(rep.rep_id)} onChange={() => toggleAssignRep(rep.rep_id)} className="w-4 h-4 accent-orange-500" />
+                    <input type="checkbox" checked={assignSelected.includes(rep.rep_id)} onChange={() => toggleAssignRep(rep.rep_id)} className="w-4 h-4 accent-kt-red" />
                     <span className="text-stone-800 text-sm font-medium">{rep.name || rep.username}</span>
                   </label>
                 ))}
@@ -600,7 +600,7 @@ export default function ManagerDashboard() {
             )}
             <div className="flex gap-3">
               <button onClick={() => { setAssigningNh(null); setAssignSelected([]); }} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-              <button onClick={saveAssignment} disabled={savingAssign} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
+              <button onClick={saveAssignment} disabled={savingAssign} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>
                 {savingAssign ? 'Saving…' : 'Save'}
               </button>
             </div>

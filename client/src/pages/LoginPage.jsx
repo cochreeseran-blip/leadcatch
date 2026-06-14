@@ -12,9 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      redirectByRole(user.role);
-    }
+    if (user) redirectByRole(user.role);
   }, [user]);
 
   function redirectByRole(role) {
@@ -42,40 +40,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1c1917' }}>
-      <div className="w-full max-w-sm mx-4">
-        <div className="bg-stone-800 border border-stone-700 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="text-3xl font-bold" style={{ color: '#ea580c' }}>LeadCatch Solutions</div>
-            <div className="text-stone-400 mt-2 text-lg">KnockTrakr</div>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--kt-navy)' }}>
+      <div className="w-full max-w-sm">
+        <div className="bg-white rounded-2xl p-10 shadow-2xl" style={{ border: '1px solid var(--kt-line)' }}>
+
+          {/* Brand */}
+          <div className="text-center mb-9">
+            <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '36px', margin: '0 auto 8px' }} />
+            <div style={{ color: 'var(--kt-muted)', fontSize: '14px' }}>Sign in to your account</div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                required
-                className="w-full bg-stone-700 border border-stone-600 text-white rounded-lg px-4 py-3 text-base outline-none focus:border-orange-500 transition"
-                style={{ fontSize: '16px' }}
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full bg-stone-700 border border-stone-600 text-white rounded-lg px-4 py-3 text-base outline-none focus:border-orange-500 transition"
-                style={{ fontSize: '16px' }}
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+              className="kt-input"
+              style={{ fontSize: '16px' }}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className="kt-input"
+              style={{ fontSize: '16px' }}
+            />
 
             {error && (
-              <div className="bg-red-900/40 border border-red-700 text-red-400 rounded-lg px-4 py-3 text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
                 {error}
               </div>
             )}
@@ -83,10 +79,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-lg text-white font-semibold text-base transition active:scale-95 disabled:opacity-60"
-              style={{ backgroundColor: '#ea580c', minHeight: '48px' }}
+              className="kt-btn kt-btn-primary w-full mt-2"
+              style={{ minHeight: '48px', marginTop: '8px' }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
         </div>

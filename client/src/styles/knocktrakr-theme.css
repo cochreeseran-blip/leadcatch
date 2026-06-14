@@ -1,0 +1,132 @@
+/* ==========================================================================
+   KnockTrakr — Theme tokens
+   The single source of truth for the whole app's look.
+   Navy + red, Uber-style: stark, high-contrast, map-forward, minimal.
+   Import this once at your app root, then use the variables everywhere.
+   This REPLACES the old orange (#ea580c) theme entirely.
+   ========================================================================== */
+
+:root {
+  /* ---- Core palette ---- */
+  --kt-ink:        #0B0F17;  /* near-black — primary dark base / app shell */
+  --kt-navy:       #0A2540;  /* brand navy — dark surfaces, map background */
+  --kt-navy-2:     #0E2E50;  /* raised navy surface */
+  --kt-navy-line:  #1C3349;  /* hairlines on dark */
+
+  --kt-red:        #E11D3A;  /* THE action color — buttons, active, pins. Use sparingly. */
+  --kt-red-deep:   #C8102E;  /* hover / pressed red */
+  --kt-red-soft:   rgba(225,29,58,0.14); /* red tint backgrounds */
+
+  --kt-paper:      #FFFFFF;  /* light surfaces / cards */
+  --kt-mist:       #F5F6F8;  /* app background (light mode) */
+  --kt-line:       #E5E8ED;  /* hairline on light */
+
+  --kt-text:       #0B0F17;  /* primary text on light */
+  --kt-muted:      #677383;  /* secondary text on light */
+  --kt-text-dark:  #FFFFFF;  /* primary text on dark */
+  --kt-muted-dark: #9DB0C4;  /* secondary text on dark */
+
+  /* ---- Status colors (knock outcomes) ---- */
+  --kt-status-sale:     #E11D3A;  /* sale / lead — red, the win */
+  --kt-status-callback: #E8A13A;  /* callback / come-back */
+  --kt-status-nothome:  #5B708A;  /* not home — muted */
+  --kt-status-no:       #3A4757;  /* not interested — dark grey */
+
+  /* ---- Type ---- */
+  --kt-font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --kt-font-body:    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* ---- Radii ---- */
+  --kt-r-sm: 10px;
+  --kt-r:    14px;   /* default cards / buttons */
+  --kt-r-lg: 20px;   /* sheets, large cards */
+
+  /* ---- Shadows (use lightly — Uber leans on borders, not heavy shadows) ---- */
+  --kt-shadow:    0 4px 14px rgba(11,15,23,0.08);
+  --kt-shadow-lg: 0 24px 60px rgba(11,15,23,0.18);
+
+  /* ---- Spacing scale ---- */
+  --kt-space-1: 6px;
+  --kt-space-2: 12px;
+  --kt-space-3: 18px;
+  --kt-space-4: 26px;
+  --kt-space-5: 40px;
+  --kt-space-6: 64px;
+}
+
+/* ==========================================================================
+   Base component styles — drop-in classes you can apply directly.
+   ========================================================================== */
+
+.kt-display { font-family: var(--kt-font-display); letter-spacing: -0.02em; font-weight: 700; }
+body, .kt-body { font-family: var(--kt-font-body); color: var(--kt-text); }
+
+/* Buttons */
+.kt-btn {
+  font-family: var(--kt-font-body);
+  font-weight: 600; font-size: 15px;
+  border: none; border-radius: var(--kt-r);
+  padding: 13px 22px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .12s ease, background .15s ease, border-color .15s ease;
+}
+.kt-btn-primary { background: var(--kt-red); color: #fff; }
+.kt-btn-primary:hover { background: var(--kt-red-deep); transform: translateY(-1px); }
+.kt-btn-dark { background: var(--kt-ink); color: #fff; }
+.kt-btn-dark:hover { transform: translateY(-1px); }
+.kt-btn-ghost { background: transparent; color: var(--kt-text); border: 1.5px solid #D3D9E0; }
+.kt-btn-ghost:hover { border-color: var(--kt-text); }
+.kt-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+/* Cards */
+.kt-card {
+  background: var(--kt-paper);
+  border: 1px solid var(--kt-line);
+  border-radius: var(--kt-r);
+  padding: var(--kt-space-4);
+}
+.kt-card-dark {
+  background: var(--kt-navy-2);
+  border: 1px solid var(--kt-navy-line);
+  border-radius: var(--kt-r);
+  padding: var(--kt-space-4);
+  color: var(--kt-text-dark);
+}
+
+/* Inputs */
+.kt-input {
+  width: 100%;
+  font-family: var(--kt-font-body); font-size: 16px;
+  color: var(--kt-text);
+  background: var(--kt-paper);
+  border: 1.5px solid var(--kt-line);
+  border-radius: var(--kt-r-sm);
+  padding: 13px 15px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.kt-input:focus {
+  outline: none;
+  border-color: var(--kt-navy);
+  box-shadow: 0 0 0 3px rgba(10,37,64,0.12);
+}
+.kt-label { font-size: 13px; font-weight: 600; color: var(--kt-muted); margin-bottom: 7px; display: block; }
+
+/* Status dot / pill — for knock outcomes */
+.kt-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 999px; }
+.kt-pill-sale     { background: var(--kt-red-soft); color: var(--kt-red); }
+.kt-pill-callback { background: rgba(232,161,58,.16); color: #B97A12; }
+.kt-pill-nothome  { background: rgba(91,112,138,.16); color: #46586A; }
+
+/* Headings scale */
+.kt-h1 { font-family: var(--kt-font-display); font-weight: 700; font-size: 34px; line-height: 1.08; letter-spacing: -0.03em; }
+.kt-h2 { font-family: var(--kt-font-display); font-weight: 700; font-size: 24px; line-height: 1.12; letter-spacing: -0.02em; }
+.kt-h3 { font-family: var(--kt-font-display); font-weight: 600; font-size: 18px; letter-spacing: -0.01em; }
+
+/* Map surface helper (dark) */
+.kt-map { background: var(--kt-navy); }
+
+/* ==========================================================================
+   Font import — add this to your index.html <head>, OR keep here if your
+   bundler supports @import:
+   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+   ========================================================================== */

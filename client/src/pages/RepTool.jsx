@@ -23,11 +23,11 @@ function makePinIcon(color) {
 }
 
 const greyPinIcon = makePinIcon('#9ca3af');
-const accentPinIcon = makePinIcon('#2563eb');
+const accentPinIcon = makePinIcon('#E11D3A');
 
 const userDotIcon = new L.DivIcon({
   className: '',
-  html: `<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:2.5px solid white;box-shadow:0 0 0 4px rgba(37,99,235,0.2)"></div>`,
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:#0A2540;border:2.5px solid white;box-shadow:0 0 0 4px rgba(10,37,64,0.22)"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
@@ -52,7 +52,7 @@ const OUTCOME_LABELS = {
 const OUTCOME_PILL_COLORS = {
   no_answer: 'bg-stone-100 text-stone-500',
   not_interested: 'bg-red-50 text-red-600',
-  has_contractor: 'bg-orange-50 text-orange-600',
+  has_contractor: 'bg-stone-100 text-stone-600',
   not_available: 'bg-yellow-50 text-yellow-700',
   inspection_set: 'bg-blue-50 text-blue-700',
   other: 'bg-stone-100 text-stone-500',
@@ -317,7 +317,7 @@ export default function RepTool() {
               <Circle
                 center={[userPos.lat, userPos.lng]}
                 radius={accuracy || 15}
-                pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.12, weight: 1.5 }}
+                pathOptions={{ color: '#0A2540', fillColor: '#0A2540', fillOpacity: 0.10, weight: 1.5 }}
               />
               <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon} />
             </>
@@ -342,18 +342,20 @@ export default function RepTool() {
       </div>
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md border-b border-stone-200/60 shadow-sm">
-        <span className="text-sm font-bold text-stone-900 tracking-tight">KnockTrakr</span>
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur-md" style={{ borderBottom: '1px solid var(--kt-line)' }}>
+        <img src="/icons/wordmark.png" alt="KnockTrakr" style={{ height: '22px' }} />
         <div className="flex items-center gap-2">
           <button
             onClick={() => setNeighborhoodsOpen(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-700 bg-stone-100 active:bg-stone-200 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            style={{ color: 'var(--kt-navy)', background: 'rgba(10,37,64,0.07)' }}
           >
             Neighborhoods
           </button>
           <button
             onClick={logout}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-500 border border-stone-200 active:bg-stone-50 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            style={{ color: 'var(--kt-muted)', border: '1px solid var(--kt-line)' }}
           >
             Logout
           </button>

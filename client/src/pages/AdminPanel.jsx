@@ -283,7 +283,7 @@ export default function AdminPanel() {
     return (
       <div
         className={`${sz} rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0`}
-        style={{ backgroundColor: company.brand_color || '#ea580c' }}
+        style={{ backgroundColor: company.brand_color || 'var(--kt-navy)' }}
       >
         {company.name[0]?.toUpperCase()}
       </div>
@@ -296,10 +296,13 @@ export default function AdminPanel() {
 
     return (
       <div className="min-h-screen bg-stone-50">
-        <div style={{ backgroundColor: '#1c1917' }} className="px-6 py-4 flex items-center justify-between">
+        <div style={{ backgroundColor: 'var(--kt-navy)' }} className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => setSelectedCompany(null)} className="text-stone-400 hover:text-white text-sm">← Back</button>
-            <span className="text-white font-bold text-xl">LeadCatch Admin</span>
+            <div className="flex items-center gap-2">
+              <img src="/icons/wordmark-white.png" alt="KnockTrakr" style={{ height: '24px' }} />
+              <span style={{ color: 'var(--kt-muted-dark)', fontSize: '13px', fontWeight: 500 }}>Admin</span>
+            </div>
           </div>
           <button onClick={logout} className="text-stone-400 text-sm hover:text-white">Logout</button>
         </div>
@@ -319,7 +322,7 @@ export default function AdminPanel() {
                 onClick={pullBranding}
                 disabled={brandingLoading}
                 className="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-60"
-                style={{ backgroundColor: '#ea580c' }}
+                style={{ backgroundColor: 'var(--kt-red)' }}
               >
                 {brandingLoading ? 'Pulling...' : 'Pull Branding'}
               </button>
@@ -338,7 +341,7 @@ export default function AdminPanel() {
               <button
                 onClick={() => setShowAddManager(true)}
                 className="px-3 py-2 rounded-lg text-white text-sm font-medium"
-                style={{ backgroundColor: '#ea580c' }}
+                style={{ backgroundColor: 'var(--kt-red)' }}
               >
                 + Add Manager
               </button>
@@ -347,7 +350,7 @@ export default function AdminPanel() {
             {createdManagerCreds && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 font-mono text-sm">
                 <div className="text-green-800 font-semibold mb-1">Manager Created</div>
-                <div>URL: www.useleadcatch.com/login</div>
+                <div>URL: useleadcatch.com/login</div>
                 <div>Username: {createdManagerCreds.username}</div>
                 <div>Password: {createdManagerCreds.password}</div>
               </div>
@@ -378,7 +381,7 @@ export default function AdminPanel() {
               <button
                 onClick={() => setShowAddRep(true)}
                 className="px-3 py-2 rounded-lg text-white text-sm font-medium"
-                style={{ backgroundColor: '#ea580c' }}
+                style={{ backgroundColor: 'var(--kt-red)' }}
               >
                 + Add Rep
               </button>
@@ -387,7 +390,7 @@ export default function AdminPanel() {
             {createdRepCreds && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 font-mono text-sm">
                 <div className="text-green-800 font-semibold mb-1">Rep Created</div>
-                <div>URL: www.useleadcatch.com/login</div>
+                <div>URL: useleadcatch.com/login</div>
                 <div>Username: {createdRepCreds.username}</div>
                 <div>Password: {createdRepCreds.password}</div>
               </div>
@@ -450,7 +453,7 @@ export default function AdminPanel() {
                     placeholder={keyConfigured ? 'Paste new key to replace…' : 'Paste API key from AccuLynx…'}
                     value={crmApiKey}
                     onChange={e => setCrmApiKey(e.target.value)}
-                    className="flex-1 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-800 outline-none focus:border-orange-500 text-sm"
+                    className="flex-1 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-800 outline-none focus:border-kt-navy text-sm"
                     style={{ fontSize: '14px' }}
                     autoComplete="off"
                   />
@@ -458,7 +461,7 @@ export default function AdminPanel() {
                     onClick={saveCrmKey}
                     disabled={crmSaving}
                     className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-60"
-                    style={{ backgroundColor: '#ea580c' }}
+                    style={{ backgroundColor: 'var(--kt-red)' }}
                   >
                     {crmSaving ? 'Saving…' : 'Save Key'}
                   </button>
@@ -505,7 +508,7 @@ export default function AdminPanel() {
                     disabled={crmToggling}
                     className={[
                       'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 shrink-0 ml-4',
-                      pushEnabled ? 'bg-orange-500' : 'bg-stone-300',
+                      pushEnabled ? 'bg-kt-red' : 'bg-stone-300',
                     ].join(' ')}
                   >
                     <span
@@ -550,15 +553,15 @@ export default function AdminPanel() {
               <h2 className="text-xl font-bold text-stone-800 mb-4">Edit Manager</h2>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="text" placeholder="First Name" value={editManagerForm.firstName} onChange={e => setEditManagerForm(f => ({ ...f, firstName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                  <input type="text" placeholder="Last Name" value={editManagerForm.lastName} onChange={e => setEditManagerForm(f => ({ ...f, lastName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                  <input type="text" placeholder="First Name" value={editManagerForm.firstName} onChange={e => setEditManagerForm(f => ({ ...f, firstName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                  <input type="text" placeholder="Last Name" value={editManagerForm.lastName} onChange={e => setEditManagerForm(f => ({ ...f, lastName: e.target.value }))} className="border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
                 </div>
-                <input type="text" placeholder="Username" value={editManagerForm.username} onChange={e => setEditManagerForm(f => ({ ...f, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="email" placeholder="Email" value={editManagerForm.email} onChange={e => setEditManagerForm(f => ({ ...f, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="Username" value={editManagerForm.username} onChange={e => setEditManagerForm(f => ({ ...f, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="email" placeholder="Email" value={editManagerForm.email} onChange={e => setEditManagerForm(f => ({ ...f, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Role</label>
-                    <select value={editManagerForm.role} onChange={e => setEditManagerForm(f => ({ ...f, role: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-orange-500" style={{ fontSize: '16px' }}>
+                    <select value={editManagerForm.role} onChange={e => setEditManagerForm(f => ({ ...f, role: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-kt-navy" style={{ fontSize: '16px' }}>
                       <option value="manager">Manager</option>
                       <option value="rep">Rep</option>
                       <option value="superadmin">Superadmin</option>
@@ -566,7 +569,7 @@ export default function AdminPanel() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Status</label>
-                    <select value={editManagerForm.isActive ? 'active' : 'inactive'} onChange={e => setEditManagerForm(f => ({ ...f, isActive: e.target.value === 'active' }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-orange-500" style={{ fontSize: '16px' }}>
+                    <select value={editManagerForm.isActive ? 'active' : 'inactive'} onChange={e => setEditManagerForm(f => ({ ...f, isActive: e.target.value === 'active' }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 text-stone-800 bg-white outline-none focus:border-kt-navy" style={{ fontSize: '16px' }}>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
@@ -574,7 +577,7 @@ export default function AdminPanel() {
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setEditingManager(null)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-                  <button onClick={saveEditManager} disabled={savingEdit || !editManagerForm.firstName || !editManagerForm.lastName || !editManagerForm.username} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>
+                  <button onClick={saveEditManager} disabled={savingEdit || !editManagerForm.firstName || !editManagerForm.lastName || !editManagerForm.username} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>
                     {savingEdit ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
@@ -589,11 +592,11 @@ export default function AdminPanel() {
             <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
               <h2 className="text-xl font-bold text-stone-800 mb-4">Add Rep</h2>
               <div className="space-y-3">
-                <input type="text" placeholder="First Name" value={newRep.firstName} onChange={e => setNewRep(r => ({ ...r, firstName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="text" placeholder="Last Name" value={newRep.lastName} onChange={e => setNewRep(r => ({ ...r, lastName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="First Name" value={newRep.firstName} onChange={e => setNewRep(r => ({ ...r, firstName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="Last Name" value={newRep.lastName} onChange={e => setNewRep(r => ({ ...r, lastName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setShowAddRep(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-                  <button onClick={addRep} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Rep'}</button>
+                  <button onClick={addRep} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>{saving ? 'Creating...' : 'Create Rep'}</button>
                 </div>
               </div>
             </div>
@@ -606,15 +609,15 @@ export default function AdminPanel() {
             <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
               <h2 className="text-xl font-bold text-stone-800 mb-4">Add Manager</h2>
               <div className="space-y-3">
-                <input type="text" placeholder="First Name" value={newManager.firstName} onChange={e => setNewManager(m => ({ ...m, firstName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="text" placeholder="Last Name" value={newManager.lastName} onChange={e => setNewManager(m => ({ ...m, lastName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="text" placeholder="Username" value={newManager.username} onChange={e => setNewManager(m => ({ ...m, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="password" placeholder="Password" value={newManager.password} onChange={e => setNewManager(m => ({ ...m, password: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-                <input type="email" placeholder="Email (for lead notifications)" value={newManager.email} onChange={e => setNewManager(m => ({ ...m, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="First Name" value={newManager.firstName} onChange={e => setNewManager(m => ({ ...m, firstName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="Last Name" value={newManager.lastName} onChange={e => setNewManager(m => ({ ...m, lastName: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="text" placeholder="Username" value={newManager.username} onChange={e => setNewManager(m => ({ ...m, username: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="password" placeholder="Password" value={newManager.password} onChange={e => setNewManager(m => ({ ...m, password: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+                <input type="email" placeholder="Email (for lead notifications)" value={newManager.email} onChange={e => setNewManager(m => ({ ...m, email: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
                 <p className="text-xs text-stone-400 -mt-1">Email is optional but required to receive lead notifications.</p>
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setShowAddManager(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
-                  <button onClick={addManager} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Manager'}</button>
+                  <button onClick={addManager} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>{saving ? 'Creating...' : 'Create Manager'}</button>
                 </div>
               </div>
             </div>
@@ -626,10 +629,10 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <div style={{ backgroundColor: '#1c1917' }} className="px-6 py-4 flex items-center justify-between">
+      <div style={{ backgroundColor: 'var(--kt-navy)' }} className="px-6 py-4 flex items-center justify-between">
         <div>
-          <span className="text-white font-bold text-xl">LeadCatch Admin</span>
-          <span className="text-stone-400 text-sm ml-3">Manage your KnockTrakr clients</span>
+          <img src="/icons/wordmark-white.png" alt="KnockTrakr" style={{ height: '24px' }} />
+          <span className="text-sm ml-3" style={{ color: 'var(--kt-muted-dark)' }}>Admin</span>
         </div>
         <button onClick={logout} className="text-stone-400 text-sm hover:text-white">Logout</button>
       </div>
@@ -653,7 +656,7 @@ export default function AdminPanel() {
           <button
             onClick={() => setShowAddCompany(true)}
             className="px-4 py-2 rounded-xl text-white font-semibold text-sm"
-            style={{ backgroundColor: '#ea580c' }}
+            style={{ backgroundColor: 'var(--kt-red)' }}
           >
             + Add Company
           </button>
@@ -667,14 +670,14 @@ export default function AdminPanel() {
             <div
               key={company.id}
               onClick={() => openCompany(company)}
-              className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:border-orange-300 transition"
+              className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:border-kt-red transition"
             >
               {company.logo_url ? (
                 <img src={company.logo_url} alt={company.name} className="w-10 h-10 rounded-xl object-contain border border-stone-200" />
               ) : (
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-lg flex-shrink-0"
-                  style={{ backgroundColor: company.brand_color || '#ea580c' }}
+                  style={{ backgroundColor: company.brand_color || 'var(--kt-navy)' }}
                 >
                   {company.name[0]?.toUpperCase()}
                 </div>
@@ -700,9 +703,9 @@ export default function AdminPanel() {
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <h2 className="text-xl font-bold text-stone-800 mb-4">Add Company</h2>
             <div className="space-y-3">
-              <input type="text" placeholder="Company Name *" value={newCompany.name} onChange={e => setNewCompany(c => ({ ...c, name: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-              <input type="text" placeholder="Website URL" value={newCompany.websiteUrl} onChange={e => setNewCompany(c => ({ ...c, websiteUrl: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
-              <input type="text" placeholder="Phone Number" value={newCompany.phoneNumber} onChange={e => setNewCompany(c => ({ ...c, phoneNumber: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-orange-500" style={{ fontSize: '16px' }} />
+              <input type="text" placeholder="Company Name *" value={newCompany.name} onChange={e => setNewCompany(c => ({ ...c, name: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+              <input type="text" placeholder="Website URL" value={newCompany.websiteUrl} onChange={e => setNewCompany(c => ({ ...c, websiteUrl: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
+              <input type="text" placeholder="Phone Number" value={newCompany.phoneNumber} onChange={e => setNewCompany(c => ({ ...c, phoneNumber: e.target.value }))} className="w-full border border-stone-300 rounded-xl px-4 py-3 outline-none focus:border-kt-navy" style={{ fontSize: '16px' }} />
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddCompany(false)} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-700">Cancel</button>
                 <button onClick={async () => {
@@ -715,7 +718,7 @@ export default function AdminPanel() {
                     fetchCompanies();
                   } catch (err) { alert(err.message); }
                   finally { setSaving(false); }
-                }} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: '#ea580c' }}>{saving ? 'Creating...' : 'Create Company'}</button>
+                }} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: 'var(--kt-red)' }}>{saving ? 'Creating...' : 'Create Company'}</button>
               </div>
             </div>
           </div>
