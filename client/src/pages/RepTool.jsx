@@ -50,12 +50,12 @@ const OUTCOME_LABELS = {
 };
 
 const OUTCOME_PILL_COLORS = {
-  no_answer: 'bg-stone-100 text-stone-500',
+  inspection_set: 'bg-emerald-50 text-emerald-700',
   not_interested: 'bg-red-50 text-red-600',
-  has_contractor: 'bg-stone-100 text-stone-600',
-  not_available: 'bg-yellow-50 text-yellow-700',
-  inspection_set: 'bg-blue-50 text-blue-700',
-  other: 'bg-stone-100 text-stone-500',
+  has_contractor: 'bg-red-50 text-red-600',
+  not_available:  'bg-amber-50 text-amber-700',
+  no_answer:      'bg-stone-100 text-stone-500',
+  other:          'bg-stone-100 text-stone-500',
 };
 
 function fmtTime(iso) {
