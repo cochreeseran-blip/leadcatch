@@ -40,6 +40,11 @@ app.use('/api/knocktrakr', knocktrakrRouter);
 
 const publicPath = join(__dirname, 'public');
 if (existsSync(publicPath)) {
+  // Never cache the service worker — browsers must always re-fetch it to detect updates
+  app.get('/service-worker.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(join(publicPath, 'service-worker.js'));
+  });
   app.use(express.static(publicPath));
   app.get(/^(?!\/api).*/, (req, res) => {
     res.sendFile(join(publicPath, 'index.html'));

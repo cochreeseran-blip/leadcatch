@@ -1,6 +1,6 @@
 // KnockTrakr service worker — network-first, version-gated cache bust
 
-const CACHE = "knocktrakr-v3";
+const CACHE = "knocktrakr-v4";
 const SHELL = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
