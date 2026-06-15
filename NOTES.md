@@ -22,11 +22,10 @@ Use only the returned IDs (those belonging to the correct company) for the inser
 **Priority:** Low right now (no cross-company data is exposed beyond neighborhood names), but fix before scaling.
 
 ### 3. Email FROM address pending
-`server/services/email.js` — FROM is set to `noreply@mail.knocktrakr.com` but Resend domain verification for `mail.knocktrakr.com` has not been completed yet. Until verified, email sending will fail. Verify the domain in the Resend dashboard and add the DNS TXT records on Porkbun.
+`server/services/email.js` — FROM is currently `onboarding@resend.dev` (Resend sandbox, only sends to verified recipient addresses). To send to any address, verify `mail.knocktrakr.com` as a sending domain in Resend, add the DNS TXT records on Porkbun, then update FROM to `KnockTrakr <noreply@mail.knocktrakr.com>`.
 
-### 4. ALLOWED_ORIGIN Railway env var
-During the useleadcatch.com → app.knocktrakr.com domain transition, set this to a comma-separated list:
+### 4. Railway env vars to set once app.knocktrakr.com DNS is live
 ```
-ALLOWED_ORIGIN=https://useleadcatch.com,https://www.useleadcatch.com,https://app.knocktrakr.com
+APP_URL=https://app.knocktrakr.com
+ALLOWED_ORIGIN=https://app.knocktrakr.com
 ```
-After the cutover is complete, narrow it to just `https://app.knocktrakr.com`.
