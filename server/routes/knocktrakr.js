@@ -465,7 +465,7 @@ router.post('/invite-rep', async (req, res) => {
     );
     const newUser = rows[0];
 
-    const appOrigin = process.env.APP_URL || 'https://www.useleadcatch.com';
+    const appOrigin = process.env.APP_URL || 'https://app.knocktrakr.com';
     const inviteUrl = `${appOrigin}/accept-invite?token=${token}`;
 
     let emailSent = false;
@@ -516,7 +516,7 @@ router.post('/manager/reps/:repId/resend-invite', async (req, res) => {
       [token, expiresAt, rep.id]
     );
 
-    const appOrigin = process.env.APP_URL || 'https://www.useleadcatch.com';
+    const appOrigin = process.env.APP_URL || 'https://app.knocktrakr.com';
     const inviteUrl = `${appOrigin}/accept-invite?token=${token}`;
 
     let emailSent = false;

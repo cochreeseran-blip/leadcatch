@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Support comma-separated origins for multi-domain transition (e.g. "https://useleadcatch.com,https://app.knocktrakr.com")
+// Supports comma-separated origins, e.g. "https://app.knocktrakr.com,https://knocktrakr.com"
 const _allowedOrigins = process.env.ALLOWED_ORIGIN
   ? process.env.ALLOWED_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
   : [];
