@@ -745,19 +745,4 @@ router.put('/neighborhoods/:id/assign', async (req, res) => {
   }
 });
 
-// TEMP: superadmin-only batch timestamp update — remove after use
-router.post('/admin/backdate-knocks', async (req, res) => {
-  if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
-  const { updates } = req.body; // [{ id, created_at }]
-  try {
-    for (const { id, created_at } of updates) {
-      await pool.query(`UPDATE knocks SET created_at=$1 WHERE id=$2`, [created_at, id]);
-    }
-    res.json({ updated: updates.length });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 export default router;
