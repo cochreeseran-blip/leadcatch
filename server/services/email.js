@@ -1,8 +1,6 @@
 import { Resend } from 'resend';
 
-// ⚠️  FLAG: Switch to 'KnockTrakr <noreply@mail.knocktrakr.com>' once mail.knocktrakr.com
-// is verified in Resend (add DNS TXT records on Porkbun). Until then this sandbox address works.
-const FROM = 'KnockTrakr <onboarding@resend.dev>';
+const FROM = 'KnockTrakr <noreply@mail.knocktrakr.com>';
 
 const NAVY  = '#0A2540';
 const RED   = '#C8102E';
