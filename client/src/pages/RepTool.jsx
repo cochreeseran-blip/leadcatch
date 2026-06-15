@@ -38,12 +38,12 @@ const OUTCOME_PIN = {
 
 const userDotIcon = new L.DivIcon({
   className: '',
-  html: `<div style="position:relative;width:20px;height:20px;">
+  html: `<div style="position:relative;width:22px;height:22px;">
     <div class="loc-pulse-ring"></div>
-    <div style="position:absolute;inset:0;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 10px rgba(37,99,235,0.55);z-index:1;"></div>
+    <div style="position:absolute;inset:0;border-radius:50%;background:#2563EB;box-shadow:0 0 0 3px white,0 3px 12px rgba(37,99,235,0.6);z-index:1;"></div>
   </div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
 });
 
 const OUTCOMES = [
